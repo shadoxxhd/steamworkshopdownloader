@@ -3,7 +3,7 @@ import tkinter as tk
 import configparser
 
 ## TODO
-# config file: store appID, download target, optional login
+# manage login, move (& rename?) downloads
 
 
 global textAppid
@@ -16,21 +16,28 @@ running = False
 
 
 def download():
+    # don't start multiple steamcmd instances
     global running
     if running:
         return
     running = True
+
+    # assemble command line
     args = ['steamcmd/steamcmd.exe','+login anonymous']
     global textAppid
     appid = int(textAppid.get("1.0","end-1c"))
+    # save appid to config
     global cfg
-    cfg["general"]["appid"] = appid
+    cfg["general"]["appid"] = str(appid)
     global textWIDs
     for i in textWIDs.get("1.0",tk.END).splitlines():
         args.append(f'+workshop_download_item {appid} {int(i)}')
     args.append("+quit")
+
+    # call steamcmd
     process = subprocess.Popen(args, stdout=subprocess.PIPE, universal_newlines=True)
     
+    # show output
     global output
     while True:
         out = process.stdout.readline()
@@ -43,6 +50,8 @@ def download():
                 #print(out.strip())
                 output.insert(tk.END,out)
             break
+
+    # reset state
     textWIDs.delete("1.0", tk.END)
     button1.state = "normal"
     running = False
@@ -51,12 +60,15 @@ def download():
 # MAIN
 cfg = configparser.ConfigParser()
 
+# set defaults
 cfg.read('downloader.ini')
 if 'general' not in cfg:
-	cfg['general'] = {'appid': 281990}
+	cfg['general'] = {'appid': '281990'}
 elif 'appid' not in cfg['general']:
-    cfg['general']['appid'] = 281990
-            
+    cfg['general']['appid'] = str(281990)
+
+
+# create UI            
 root = tk.Tk()
     
 canvas1 = tk.Canvas(root, width = 820, height = 300)
@@ -84,5 +96,6 @@ canvas1.create_window(600,150,window=output)
 
 root.mainloop()
 
+# save config
 with open('downloader.ini', 'w') as file:
     cfg.write(file)

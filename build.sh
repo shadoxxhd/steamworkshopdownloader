@@ -1,0 +1,1 @@
+pyinstaller --onefile downloader.py

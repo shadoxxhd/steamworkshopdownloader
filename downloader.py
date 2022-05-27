@@ -1,6 +1,7 @@
 import subprocess
 import tkinter as tk
 import configparser
+import re
 
 ## TODO
 # manage login, move (& rename?) downloads
@@ -31,7 +32,12 @@ def download():
     cfg["general"]["appid"] = str(appid)
     global textWIDs
     for i in textWIDs.get("1.0",tk.END).splitlines():
-        args.append(f'+workshop_download_item {appid} {int(i)}')
+        wid = re.search(r"id=([0-9]+)",i)
+        if wid is None:
+            wid = i
+        else:
+            wid = wid[1]
+        args.append(f'+workshop_download_item {appid} {int(wid)}')
     args.append("+quit")
 
     # call steamcmd

@@ -2,7 +2,7 @@ simple steam workshop downloader using steamcmd.
 
 ## USAGE
 
-Download the release, extract and run "downloader.exe". Enter the app ID of the game (see below) and one or more workshop IDs (the number in the URL of the mod), then press "Download".
+Download the release, extract and run "downloader.exe". Enter the app ID of the game (see below) and one or more workshop IDs or URLs, then press "Download".
 
 The files will be downloaded to the `steamcmd/steamapps/workshop/content/<appID>/<workshop ID>` folder.
 

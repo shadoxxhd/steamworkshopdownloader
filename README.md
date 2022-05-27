@@ -10,7 +10,7 @@ Right now, only single items are supported (no batch downloading of collections 
 
 ### App ID
 
-To find out the app ID of a game, go to its store page and look at the URL. The number after `/app/' is the app ID (eg. `https://store.steampowered.com/app/281990/Stellaris/` means the app ID of stellaris is 281990).
+To find out the app ID of a game, go to its store page and look at the URL. The number after `/app/` is the app ID (eg. `https://store.steampowered.com/app/281990/Stellaris/` means the app ID of stellaris is 281990).
 
 ### WARNING
 

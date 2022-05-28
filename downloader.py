@@ -52,7 +52,7 @@ def download():
         output.update()
         return_code = process.poll()
         if return_code is not None:
-            for output in process.stdout.readlines():
+            for out in process.stdout.readlines():
                 #print(out.strip())
                 output.insert(tk.END,out)
             break

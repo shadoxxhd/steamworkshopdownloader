@@ -37,7 +37,7 @@ def download():
             wid = i
         else:
             wid = wid[1]
-        args.append(f'+workshop_download_item {appid} {int(wid)}')
+        args.append(f'+workshop_download_item {appid} {int(wid)} validate')
     args.append("+quit")
 
     # call steamcmd

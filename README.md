@@ -1,5 +1,7 @@
 simple steam workshop downloader using steamcmd.
 
+List of supported games: https://steamdb.info/sub/17906/apps/
+
 ## USAGE
 
 Download the release, extract and run "downloader.exe". Enter the app ID of the game (see below) and one or more workshop IDs or URLs, then press "Download".

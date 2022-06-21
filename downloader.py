@@ -16,7 +16,6 @@ global cfg
 running = False
 
 def getWids(text):
-    print(text)
     download = {}
     for line in text.splitlines():
         # check for collection

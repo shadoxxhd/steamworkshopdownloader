@@ -4,15 +4,11 @@ List of supported games: https://steamdb.info/sub/17906/apps/
 
 ## USAGE
 
-Download the release, extract and run "downloader.exe". Enter the app ID of the game (see below) and one or more workshop IDs or URLs, then press "Download".
+Download the release, extract and run "downloader.exe". Enter one or more workshop URLs, then press "Download".
 
 The files will be downloaded to the `steamcmd/steamapps/workshop/content/<appID>/<workshop ID>` folder.
 
-Right now, only single items are supported (no batch downloading of collections yet).
-
-### App ID
-
-To find out the app ID of a game, go to its store page and look at the URL. The number after `/app/` is the app ID (eg. `https://store.steampowered.com/app/281990/Stellaris/` means the app ID of stellaris is 281990).
+Collections are also supported now.
 
 ### WARNING
 

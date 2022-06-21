@@ -55,9 +55,6 @@ def download():
             args.append(f'+workshop_download_item {appid} {int(wid)}')
         args.append("+quit")
         
-        print(args)
-        continue
-        
         # call steamcmd
         process = subprocess.Popen(args, stdout=subprocess.PIPE, errors='ignore')
     

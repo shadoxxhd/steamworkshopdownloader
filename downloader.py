@@ -5,54 +5,40 @@ import requests
 import configparser
 import os
 import shutil
+import math
 
 def modpath(base, appid, wid):
     return os.path.join(base,'steamapps/workshop/content/',str(appid),str(wid))
 
+# faster download when mixing games
 def getWids(text):
-    download = {}
+    download = []
     for line in text.splitlines():
         if len(line)>0:
             # check for collection
-            x = requests.get(line)
-            if re.search("SubscribeCollectionItem",x.text):
-                # collection
-                dls = re.findall(r"SubscribeCollectionItem[\( ']+(\d+)[ ',]+(\d+)'",x.text)
-                for wid, appid in dls:
-                    if appid not in download:
-                        download[appid] = []
-                    download[appid].append(wid)
-            elif re.search("ShowAddToCollection",x.text):
-                # single item
-                wid, appid = re.findall(r"ShowAddToCollection[\( ']+(\d+)[ ',]+(\d+)'",x.text)[0]
-                if appid not in download:
-                    download[appid] = []
-                download[appid].append(wid)
-            else:
-                output.insert(tk.END,'"'+line+'" doesn\'t look like a valid workshop item...')
-            output.see(tk.END)
-            output.update()
+            try:
+                x = requests.get(line)
+            except Exception as exc:
+                output.insert(tk.END,"Couldn't get workshop page for "+line +"\n")
+                output.insert(tk.END,str(type(exc))+"\n")
+                output.insert(tk.END,str(exc)+"\n")
+                output.see(tk.END)
+                output.update()
+            else: 
+                if re.search("SubscribeCollectionItem",x.text):
+                    # collection
+                    dls = re.findall(r"SubscribeCollectionItem[\( ']+(\d+)[ ',]+(\d+)'",x.text)
+                    for wid, appid in dls:
+                        download.append((appid,wid))
+                elif re.search("ShowAddToCollection",x.text):
+                    # single item
+                    wid, appid = re.findall(r"ShowAddToCollection[\( ']+(\d+)[ ',]+(\d+)'",x.text)[0]
+                    download.append((appid,wid))
+                else:
+                    output.insert(tk.END,'"'+line+'" doesn\'t look like a valid workshop item...\n')
+                    output.see(tk.END)
+                    output.update()
     return download
-
-# faster download, but needs file mover redesign
-# def getWids2(text):
-#     download = []
-#     for line in text.splitlines():
-#         if len(line)>0:
-#             # check for collection
-#             x = requests.get(line)
-#             if re.search("SubscribeCollectionItem",x.text):
-#                 # collection
-#                 dls = re.findall(r"SubscribeCollectionItem[\( ']+(\d+)[ ',]+(\d+)'",x.text)
-#                 for wid, appid in dls:
-#                     download.append((appid,wid))
-#             elif re.search("ShowAddToCollection",x.text):
-#                 # single item
-#                 wid, appid = re.findall(r"ShowAddToCollection[\( ']+(\d+)[ ',]+(\d+)'",x.text)[0]
-#                 download.append((appid,wid))
-#             else:
-#                 output.insert(tk.END,'"'+line+'" doesn\'t look like a valid workshop item...')
-#     return download
 
 def download():
     # don't start multiple steamcmd instances
@@ -72,15 +58,20 @@ def download():
     try:
         # get array of IDs
         download = getWids(URLinput.get("1.0",tk.END))
+        l = len(download)
+        lim = 50
         
-        for appid in download:
+        for i in range(math.ceil(l/lim)):
+        #for appid in download:
+            batch = download[i*lim:min((i+1)*lim,l)]
+            
             # assemble command line
             args = [os.path.join(steampath,'steamcmd.exe')]
             if login is not None and passw is not None:
                 args.append('+login '+login+' '+passw)
             else:
                 args.append('+login anonymous')
-            for appid, wid in download:
+            for appid, wid in batch:
                 args.append(f'+workshop_download_item {appid} {int(wid)}')
             args.append("+quit")
             
@@ -105,17 +96,20 @@ def download():
                     break
                 
             # move mods
-            if str(appid) in cfg and 'path' in cfg[str(appid)]:
-                output.insert(tk.END, "Moving file to designated output folder ...")
-                output.see(tk.END)
-                output.update()
-                path = cfg[str(appid)]['path']
-                if(os.path.exists(os.path.join(path,str(wid)))):
-                    # already exists -> delete old version
-                    shutil.rmtree(os.path.join(path,str(wid)))
-                shutil.move(modpath(steampath,appid,wid),os.path.join(path,str(wid)))
-                output.insert(tk.END, " DONE")
-                output.update()
+            pc = {} # path cache
+            for appid, wid in batch:
+                if appid in pc or (str(appid) in cfg and 'path' in cfg[str(appid)]):
+                    path = pc.get(appid,cfg[str(appid)]['path'])
+                    output.insert(tk.END, "Moving file to designated output folder ...")
+                    output.see(tk.END)
+                    output.update()
+                    if(os.path.exists(os.path.join(path,str(wid)))):
+                        # already exists -> delete old version
+                        shutil.rmtree(os.path.join(path,str(wid)))
+                    shutil.move(modpath(steampath,appid,wid),os.path.join(path,str(wid)))
+                    output.insert(tk.END, " DONE")
+                    output.update()
+                    pc[appid]=path
         # reset state
         URLinput.delete("1.0", tk.END)
     except Exception as ex:

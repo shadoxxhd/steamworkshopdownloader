@@ -176,6 +176,9 @@ def main():
         if 'passw' in cfg['general']:
             passw = cfg['general']['login']
     
+    padx = 7
+    pady = 4
+    
     if theme=='sdark':
         # Solarized dark
         bg1="#002b36"
@@ -224,19 +227,19 @@ def main():
     
     labelURLi = tk.Label(frame, text='Workshop URLs', fg=textcol, bg=bg1)
     #canvas1.create_window(50,140,window=labelURLi)
-    labelURLi.pack(padx=3,pady=3,side=tk.TOP)
+    labelURLi.pack(padx=padx,pady=pady,side=tk.TOP)
     
     URLinput = tk.Text(frame, width = 67, height = 20, fg=textcol, bg=bg2) # root
     #canvas1.create_window(250,140,window=URLinput)
-    URLinput.pack(padx=3,pady=3,side=tk.TOP, expand=1, fill=tk.Y)
+    URLinput.pack(padx=padx,pady=pady,side=tk.TOP, expand=1, fill=tk.Y)
     
     button1 = tk.Button(frame, text='Download', command=download, fg=textcol, bg=bg1) # root
     #canvas1.create_window(250,270,window=button1)
-    button1.pack(padx=3,pady=3,side=tk.BOTTOM, fill=tk.X)
+    button1.pack(padx=padx,pady=pady,side=tk.BOTTOM, fill=tk.X)
     
     output = tk.Text(root, width=56, height = 20, fg=textcol, bg=button1['bg'], font=("Consolas",10))
     #canvas1.create_window(600,150,window=output)
-    output.pack(padx=3,pady=3,side=tk.RIGHT,fill=tk.BOTH,expand=1)
+    output.pack(padx=padx,pady=pady,side=tk.RIGHT,fill=tk.BOTH,expand=1)
     
     root.mainloop()
     

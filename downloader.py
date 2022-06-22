@@ -49,6 +49,7 @@ def download():
     global button1
     global login
     global passw
+    global lim
     
     if running:
         return
@@ -59,7 +60,6 @@ def download():
         # get array of IDs
         download = getWids(URLinput.get("1.0",tk.END))
         l = len(download)
-        lim = 50
         
         for i in range(math.ceil(l/lim)):
         #for appid in download:
@@ -131,22 +131,26 @@ def main():
     global URLinput
     global output
     global running
+    global lim
     running = False
     
     cfg = configparser.ConfigParser()
     cfg.read('downloader.ini')
     # validate ini
     if 'general' not in cfg:
-        cfg['general']={'theme': 'default', 'steampath': 'steamcmd'}
+        cfg['general']={'theme': 'default', 'steampath': 'steamcmd', 'lim': 50}
     else:
         if 'theme' not in cfg['general']:
             cfg['general']['theme'] = 'default'
         if 'steampath' not in cfg['general']:
             cfg['general']['steampath'] = 'steamcmd'
+        if 'lim' not in cfg['general']:
+            cfg['general']['lim'] = 50
     
     # set globals
     steampath = cfg['general']['steampath']
     theme = cfg['general']['theme']
+    lim = cfg['general']['lim']
     login = None
     passw = None
     if 'login' in cfg['general']:

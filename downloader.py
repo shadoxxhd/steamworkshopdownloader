@@ -2,105 +2,229 @@ import subprocess
 import tkinter as tk
 import re
 import requests
+import configparser
+import os
+import shutil
 
-## TODO
-# manage login, move (& rename?) downloads
-
-
-global textAppid
-global textWIDs
-global output
-global button1
-global running
-global cfg
-running = False
+def modpath(base, appid, wid):
+    return os.path.join(base,'steamapps/workshop/content/',str(appid),str(wid))
 
 def getWids(text):
     download = {}
     for line in text.splitlines():
-        # check for collection
-        x = requests.get(line)
-        if re.search("SubscribeCollectionItem",x.text):
-            # collection
-            dls = re.findall(r"SubscribeCollectionItem[\( ']+(\d+)[ ',]+(\d+)'",x.text)
-            for wid, appid in dls:
+        if len(line)>0:
+            # check for collection
+            x = requests.get(line)
+            if re.search("SubscribeCollectionItem",x.text):
+                # collection
+                dls = re.findall(r"SubscribeCollectionItem[\( ']+(\d+)[ ',]+(\d+)'",x.text)
+                for wid, appid in dls:
+                    if appid not in download:
+                        download[appid] = []
+                    download[appid].append(wid)
+            elif re.search("ShowAddToCollection",x.text):
+                # single item
+                wid, appid = re.findall(r"ShowAddToCollection[\( ']+(\d+)[ ',]+(\d+)'",x.text)[0]
                 if appid not in download:
                     download[appid] = []
                 download[appid].append(wid)
-        else:
-            wid, appid = re.findall(r"ShowAddToCollection[\( ']+(\d+)[ ',]+(\d+)'",x.text)[0]
-            if appid not in download:
-                download[appid] = []
-            download[appid].append(wid)
+            else:
+                output.insert(tk.END,'"'+line+'" doesn\'t look like a valid workshop item...')
+            output.see(tk.END)
+            output.update()
     return download
 
+# faster download, but needs file mover redesign
+# def getWids2(text):
+#     download = []
+#     for line in text.splitlines():
+#         if len(line)>0:
+#             # check for collection
+#             x = requests.get(line)
+#             if re.search("SubscribeCollectionItem",x.text):
+#                 # collection
+#                 dls = re.findall(r"SubscribeCollectionItem[\( ']+(\d+)[ ',]+(\d+)'",x.text)
+#                 for wid, appid in dls:
+#                     download.append((appid,wid))
+#             elif re.search("ShowAddToCollection",x.text):
+#                 # single item
+#                 wid, appid = re.findall(r"ShowAddToCollection[\( ']+(\d+)[ ',]+(\d+)'",x.text)[0]
+#                 download.append((appid,wid))
+#             else:
+#                 output.insert(tk.END,'"'+line+'" doesn\'t look like a valid workshop item...')
+#     return download
 
 def download():
     # don't start multiple steamcmd instances
     global running
+    global cfg
+    global URLinput
+    global steampath
+    global button1
+    global login
+    global passw
+    
     if running:
         return
-    #button1.state = 'disabled'
+    button1.state = tk.DISABLED
     running = True
     
-    # get array of IDs
-    global textWIDs
-    download = getWids(textWIDs.get("1.0",tk.END))
-    
-    for appid in download:
-        # assemble command line
-        args = ['steamcmd/steamcmd.exe','+login anonymous']
-        for wid in download[appid]:
-            args.append(f'+workshop_download_item {appid} {int(wid)}')
-        args.append("+quit")
+    try:
+        # get array of IDs
+        download = getWids(URLinput.get("1.0",tk.END))
         
-        # call steamcmd
-        process = subprocess.Popen(args, stdout=subprocess.PIPE, errors='ignore')
-    
-        # show output
-        global output
-        while True:
-            out = process.stdout.readline()
-            #print(out.strip())
-            output.insert(tk.END,out)
-            output.update()
-            return_code = process.poll()
-            if return_code is not None:
-                for out in process.stdout.readlines():
-                    #print(out.strip())
-                    output.insert(tk.END,out)
-                break
+        for appid in download:
+            # assemble command line
+            args = [os.path.join(steampath,'steamcmd.exe')]
+            if login is not None and passw is not None:
+                args.append('+login '+login+' '+passw)
+            else:
+                args.append('+login anonymous')
+            for appid, wid in download:
+                args.append(f'+workshop_download_item {appid} {int(wid)}')
+            args.append("+quit")
+            
+            # call steamcmd
+            process = subprocess.Popen(args, stdout=subprocess.PIPE, errors='ignore', creationflags=subprocess.CREATE_NO_WINDOW)
+        
+            # show output
+            global output
+            while True:
+                out = process.stdout.readline()
+                #print(out.strip())
+                output.insert(tk.END,out)
+                output.see(tk.END)
+                output.update()
+                return_code = process.poll()
+                if return_code is not None:
+                    for out in process.stdout.readlines():
+                        #print(out.strip())
+                        output.insert(tk.END,out)
+                    output.see(tk.END)
+                    output.update()
+                    break
+                
+            # move mods
+            if str(appid) in cfg and 'path' in cfg[str(appid)]:
+                output.insert(tk.END, "Moving file to designated output folder ...")
+                output.see(tk.END)
+                output.update()
+                path = cfg[str(appid)]['path']
+                if(os.path.exists(os.path.join(path,str(wid)))):
+                    # already exists -> delete old version
+                    shutil.rmtree(os.path.join(path,str(wid)))
+                shutil.move(modpath(steampath,appid,wid),os.path.join(path,str(wid)))
+                output.insert(tk.END, " DONE")
+                output.update()
+        # reset state
+        URLinput.delete("1.0", tk.END)
+    except Exception as ex:
+        output.insert(tk.END,type(ex))
+        output.insert(tk.END,ex)
+        output.see(tk.END)
+        output.update()
+    finally:
+        button1.state = tk.NORMAL
+        running = False
 
-    # reset state
-    textWIDs.delete("1.0", tk.END)
-    button1.state = "normal"
+
+def main():
+    global cfg
+    global steampath
+    global login
+    global passw
+    global button1
+    global URLinput
+    global output
+    global running
     running = False
-
-
-# MAIN
-
-# create UI            
-root = tk.Tk()
     
-canvas1 = tk.Canvas(root, width = 820, height = 300)
-canvas1.pack()
+    cfg = configparser.ConfigParser()
+    cfg.read('downloader.ini')
+    # validate ini
+    if 'general' not in cfg:
+        cfg['general']={'theme': 'default', 'steampath': 'steamcmd'}
+    else:
+        if 'theme' not in cfg['general']:
+            cfg['general']['theme'] = 'default'
+        if 'steampath' not in cfg['general']:
+            cfg['general']['steampath'] = 'steamcmd'
     
-#textAppid = tk.Text(root, width = 30, height = 1)
-#canvas1.create_window(250,50,window=textAppid)
+    # set globals
+    steampath = cfg['general']['steampath']
+    theme = cfg['general']['theme']
+    login = None
+    passw = None
+    if 'login' in cfg['general']:
+        login = cfg['general']['login']
+        if 'passw' in cfg['general']:
+            passw = cfg['general']['login']
+    
+    if theme=='sdark':
+        # Solarized dark
+        bg1="#002b36"
+        bg2="#073642"
+        textcol="#b58900"
+    elif theme=='solar':
+        # Solarized
+        bg1="#fdf6e3"
+        bg2="#eee8d5"
+        textcol="#073642"
+    elif theme=='black':
+        bg1="#333"
+        bg2="#555"
+        textcol="#eee"
+    elif theme=='white':
+        bg1="#e8e8e8"
+        bg2="#e8e8e8" 
+        textcol="#000000"
+        pass
+    elif theme=='default':
+        bg1=None
+        bg2=None
+        textcol=None
+    else:
+        print("invalid theme specified")
+        bg1=None
+        bg2=None
+        textcol=None
+    
+    # create UI            
+    root = tk.Tk()
+    root['bg'] = bg1
+    
+    frame = tk.Frame(root, bg=bg1)
+    frame.pack(padx=0,pady=0,side=tk.LEFT, fill=tk.Y)
+    
+    #canvas1 = tk.Canvas(root, width = 820, height = 300)
+    #canvas1.pack()
+    
+    #textAppid = tk.Text(root, width = 30, height = 1)
+    #canvas1.create_window(250,50,window=textAppid)
+    
+    #labelAppid = tk.Label(root, text='App ID')
+    #canvas1.create_window(50,50,window=labelAppid)
+    
+    labelURLi = tk.Label(frame, text='Workshop URLs', fg=textcol, bg=bg1)
+    #canvas1.create_window(50,140,window=labelURLi)
+    labelURLi.pack(padx=3,pady=3,side=tk.TOP)
+    
+    URLinput = tk.Text(frame, width = 67, height = 20, fg=textcol, bg=bg2) # root
+    #canvas1.create_window(250,140,window=URLinput)
+    URLinput.pack(padx=3,pady=3,side=tk.TOP, expand=1, fill=tk.Y)
+    
+    button1 = tk.Button(frame, text='Download', command=download, fg=textcol, bg=bg1) # root
+    #canvas1.create_window(250,270,window=button1)
+    button1.pack(padx=3,pady=3,side=tk.BOTTOM, fill=tk.X)
+    
+    output = tk.Text(root, width=50, height = 20, fg=textcol, bg=bg1)
+    #canvas1.create_window(600,150,window=output)
+    output.pack(padx=3,pady=3,side=tk.RIGHT,fill=tk.BOTH,expand=1)
+    
+    root.mainloop()
+    
+    with open('downloader.ini', 'w') as file:
+        cfg.write(file)
 
-#labelAppid = tk.Label(root, text='App ID')
-#canvas1.create_window(50,50,window=labelAppid)
-
-textWIDs = tk.Text(root, width = 30, height = 13)
-canvas1.create_window(250,140,window=textWIDs)
-
-labelWIDs = tk.Label(root, text='Workshop URLs')
-canvas1.create_window(50,140,window=labelWIDs)
-
-button1 = tk.Button(text='Download', command=download)
-canvas1.create_window(250,270,window=button1)
-
-output = tk.Text(root, width=50, height = 15)
-canvas1.create_window(600,150,window=output)
-
-root.mainloop()
+if __name__ == '__main__':
+    main()

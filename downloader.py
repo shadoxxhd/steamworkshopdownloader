@@ -192,6 +192,7 @@ def main():
     # create UI            
     root = tk.Tk()
     root['bg'] = bg1
+    root.title("Steam Workshop Downloader")
     
     frame = tk.Frame(root, bg=bg1)
     frame.pack(padx=0,pady=0,side=tk.LEFT, fill=tk.Y)

@@ -2,6 +2,7 @@ import subprocess
 import tkinter as tk
 import re
 import requests
+import math
 
 ## TODO
 # manage login, move (& rename?) downloads
@@ -34,6 +35,31 @@ def getWids(text):
             download[appid].append(wid)
     return download
 
+def steamcmd(appid, wids):
+    # assemble command line
+    args = ['steamcmd/steamcmd.exe','+login anonymous']
+    for wid in wids:
+        args.append(f'+workshop_download_item {appid} {int(wid)}')
+    args.append("+quit")
+    
+    # call steamcmd
+    process = subprocess.Popen(args, stdout=subprocess.PIPE, errors='ignore')
+
+    # show output
+    global output
+    while True:
+        out = process.stdout.readline()
+        #print(out.strip())
+        output.insert(tk.END,out)
+        output.see(tk.END)
+        output.update()
+        return_code = process.poll()
+        if return_code is not None:
+            for out in process.stdout.readlines():
+                #print(out.strip())
+                output.insert(tk.END,out)
+            break
+
 
 def download():
     # don't start multiple steamcmd instances
@@ -42,34 +68,20 @@ def download():
         return
     #button1.state = 'disabled'
     running = True
+    limit = 50
     
     # get array of IDs
     global textWIDs
     download = getWids(textWIDs.get("1.0",tk.END))
-    
     for appid in download:
-        # assemble command line
-        args = ['steamcmd/steamcmd.exe','+login anonymous']
-        for wid in download[appid]:
-            args.append(f'+workshop_download_item {appid} {int(wid)}')
-        args.append("+quit")
-        
-        # call steamcmd
-        process = subprocess.Popen(args, stdout=subprocess.PIPE, errors='ignore')
+        # check for argument length limit
+        l = len(download[appid])
+        if l>limit:
+            for i in range(0,math.ceil(l/limit)):
+                steamcmd(appid,download[appid][limit*i:min(limit*(i+1),l)])
+        else:
+            steamcmd(appid,download[appid])
     
-        # show output
-        global output
-        while True:
-            out = process.stdout.readline()
-            #print(out.strip())
-            output.insert(tk.END,out)
-            output.update()
-            return_code = process.poll()
-            if return_code is not None:
-                for out in process.stdout.readlines():
-                    #print(out.strip())
-                    output.insert(tk.END,out)
-                break
 
     # reset state
     textWIDs.delete("1.0", tk.END)

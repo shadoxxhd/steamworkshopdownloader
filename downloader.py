@@ -6,6 +6,8 @@ import configparser
 import os
 import shutil
 import math
+from zipfile import ZipFile
+from io import BytesIO
 
 def modpath(base, appid, wid):
     return os.path.join(base,'steamapps/workshop/content/',str(appid),str(wid))
@@ -57,6 +59,20 @@ def download():
     running = True
     
     try:
+        # check if steamcmd exists
+        if not os.path.exists(os.path.join(steampath,"steamcmd.exe")):
+            output.insert(tk.END,"Installing steamcmd ...")
+            output.see(tk.END)
+            output.update()
+            
+            # get it from steam servers
+            resp = requests.get("https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip")
+            ZipFile(BytesIO(resp.content)).extractall(steampath)
+            output.insert(tk.END," DONE\n")
+            output.see(tk.END)
+            output.update()
+        
+        
         # get array of IDs
         download = getWids(URLinput.get("1.0",tk.END))
         l = len(download)

@@ -234,7 +234,7 @@ def main():
     #canvas1.create_window(250,270,window=button1)
     button1.pack(padx=3,pady=3,side=tk.BOTTOM, fill=tk.X)
     
-    output = tk.Text(root, width=56, height = 20, fg=textcol, bg=bg1)
+    output = tk.Text(root, width=56, height = 20, fg=textcol, bg=button1['bg'], font=("Consolas",10))
     #canvas1.create_window(600,150,window=output)
     output.pack(padx=3,pady=3,side=tk.RIGHT,fill=tk.BOTH,expand=1)
     

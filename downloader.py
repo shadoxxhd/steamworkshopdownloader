@@ -49,6 +49,7 @@ def download():
     global URLinput
     global steampath
     global button1
+    global output
     global login
     global passw
     global lim
@@ -95,7 +96,6 @@ def download():
             process = subprocess.Popen(args, stdout=subprocess.PIPE, errors='ignore', creationflags=subprocess.CREATE_NO_WINDOW)
         
             # show output
-            global output
             while True:
                 out = process.stdout.readline()
                 #print(out.strip())

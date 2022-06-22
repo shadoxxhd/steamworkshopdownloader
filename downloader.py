@@ -100,15 +100,17 @@ def download():
             for appid, wid in batch:
                 if appid in pc or (str(appid) in cfg and 'path' in cfg[str(appid)]):
                     path = pc.get(appid,cfg[str(appid)]['path'])
-                    output.insert(tk.END, "Moving file to designated output folder ...")
-                    output.see(tk.END)
-                    output.update()
-                    if(os.path.exists(os.path.join(path,str(wid)))):
-                        # already exists -> delete old version
-                        shutil.rmtree(os.path.join(path,str(wid)))
-                    shutil.move(modpath(steampath,appid,wid),os.path.join(path,str(wid)))
-                    output.insert(tk.END, " DONE")
-                    output.update()
+                    if os.path.exists(modpath(steampath,appid,wid)):
+                        output.insert(tk.END, "Moving "+str(wid)+" ...")
+                        output.see(tk.END)
+                        output.update()
+                        if(os.path.exists(os.path.join(path,str(wid)))):
+                            # already exists -> delete old version
+                            shutil.rmtree(os.path.join(path,str(wid)))
+                        shutil.move(modpath(steampath,appid,wid),os.path.join(path,str(wid)))
+                        output.insert(tk.END, " DONE\n")
+                        output.see(tk.END)
+                        output.update()
                     pc[appid]=path
         # reset state
         URLinput.delete("1.0", tk.END)
@@ -138,19 +140,19 @@ def main():
     cfg.read('downloader.ini')
     # validate ini
     if 'general' not in cfg:
-        cfg['general']={'theme': 'default', 'steampath': 'steamcmd', 'lim': 50}
+        cfg['general']={'theme': 'default', 'steampath': 'steamcmd', 'batchsize': '50'}
     else:
         if 'theme' not in cfg['general']:
             cfg['general']['theme'] = 'default'
         if 'steampath' not in cfg['general']:
             cfg['general']['steampath'] = 'steamcmd'
         if 'lim' not in cfg['general']:
-            cfg['general']['lim'] = 50
+            cfg['general']['batchsize'] = '50'
     
     # set globals
     steampath = cfg['general']['steampath']
     theme = cfg['general']['theme']
-    lim = cfg['general']['lim']
+    lim = int(cfg['general']['batchsize'])
     login = None
     passw = None
     if 'login' in cfg['general']:
@@ -215,7 +217,7 @@ def main():
     #canvas1.create_window(250,270,window=button1)
     button1.pack(padx=3,pady=3,side=tk.BOTTOM, fill=tk.X)
     
-    output = tk.Text(root, width=50, height = 20, fg=textcol, bg=bg1)
+    output = tk.Text(root, width=56, height = 20, fg=textcol, bg=bg1)
     #canvas1.create_window(600,150,window=output)
     output.pack(padx=3,pady=3,side=tk.RIGHT,fill=tk.BOTH,expand=1)
     

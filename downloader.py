@@ -232,6 +232,7 @@ def main():
     URLinput = tk.Text(frame, width = 67, height = 20, fg=textcol, bg=bg2) # root
     #canvas1.create_window(250,140,window=URLinput)
     URLinput.pack(padx=padx,pady=pady,side=tk.TOP, expand=1, fill=tk.Y)
+    URLinput.bind("<Button-3>", lambda a: URLinput.insert(tk.END,root.clipboard_get()+"\n"))
     
     button1 = tk.Button(frame, text='Download', command=download, fg=textcol, bg=bg1) # root
     #canvas1.create_window(250,270,window=button1)

@@ -6,9 +6,9 @@ ___
 
 ## USAGE
 
-Download the release, extract and run "downloader.exe". Enter one or more workshop URLs, then press "Download".
+Download and run "downloader.exe". Enter one or more workshop URLs, then press "Download".
 
-The files will be downloaded to the `steamcmd/steamapps/workshop/content/<appID>/<workshop ID>` folder by default.
+The files will be downloaded to the `steamcmd/steamapps/workshop/content/<appID>/<workshop ID>` folder (relative to the executable) by default.
 
 Collections are also supported now.
 
@@ -30,6 +30,7 @@ Open the downloader.ini file with any text editor and change or add the relevant
 - `batchsize` : Amount of items to download per batch. Low values cause a higher overhead when downloading many items (perhaps 5s per batch), while high values may cause issues on some systems. On Windows, the highest usable value seems to be about 700. Default is 50. Should be safe to increase to 500 in most cases.
 - `login` : Steam username
 - `passw` : Steam password
+- `defaultpath` : moves all downloads with no other configured path to `<defaultpath>/<appid>`
 
 If both `login` and `passw` are provided, it will try a non-anonymous login before downloading. When using 2FA, manual configuration of steamcmd might be neccassary.
 
@@ -46,8 +47,9 @@ theme = solar
 batchsize = 500
 login = user123
 passw = 123456
+defaultpath = mods
 
 [281990]
 # Stellaris
-path = mods
+path = D:\games\stellaris\mods
 ```

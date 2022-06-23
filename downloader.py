@@ -46,8 +46,9 @@ def download():
     # don't start multiple steamcmd instances
     global running
     global cfg
-    global URLinput
     global steampath
+    global defaultpath
+    global URLinput
     global button1
     global output
     global login
@@ -99,6 +100,11 @@ def download():
             while True:
                 out = process.stdout.readline()
                 #print(out.strip())
+                if m := re.search("Redirecting stderr to",out):
+                    output.insert(tk.END,out[:m.span()[0]]+"\n")
+                    break
+                if re.match("-- type 'quit' to exit --",out):
+                    continue
                 output.insert(tk.END,out)
                 output.see(tk.END)
                 output.update()
@@ -114,9 +120,11 @@ def download():
             # move mods
             pc = {} # path cache
             for appid, wid in batch:
-                if appid in pc or (str(appid) in cfg and 'path' in cfg[str(appid)]):
-                    path = pc.get(appid,cfg[str(appid)]['path'])
+                if appid in pc or cfg.get(str(appid),'path',fallback=None) or defaultpath:
+                    path = pc.get(appid,cfg.get(str(appid),'path',
+                                    fallback = os.path.join(defaultpath,str(appid))))
                     if os.path.exists(modpath(steampath,appid,wid)):
+                        # download was successful
                         output.insert(tk.END, "Moving "+str(wid)+" ...")
                         output.see(tk.END)
                         output.update()
@@ -143,6 +151,7 @@ def download():
 def main():
     global cfg
     global steampath
+    global defaultpath
     global login
     global passw
     global button1
@@ -167,6 +176,7 @@ def main():
     
     # set globals
     steampath = cfg['general']['steampath']
+    defaultpath = cfg.get('general','defaultpath',fallback=None)
     theme = cfg['general']['theme']
     lim = int(cfg['general']['batchsize'])
     login = None
@@ -174,7 +184,7 @@ def main():
     if 'login' in cfg['general']:
         login = cfg['general']['login']
         if 'passw' in cfg['general']:
-            passw = cfg['general']['login']
+            passw = cfg['general']['passw']
     
     padx = 7
     pady = 4
@@ -244,8 +254,9 @@ def main():
     
     root.mainloop()
     
-    with open('downloader.ini', 'w') as file:
-        cfg.write(file)
+    if not os.path.exists('downloader.ini'): # remove this when in-app options menu exists
+        with open('downloader.ini', 'w') as file:
+            cfg.write(file)
 
 if __name__ == '__main__':
     main()

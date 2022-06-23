@@ -161,7 +161,7 @@ def main():
     global lim
     running = False
     
-    cfg = configparser.ConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     cfg.read('downloader.ini')
     # validate ini
     if 'general' not in cfg:

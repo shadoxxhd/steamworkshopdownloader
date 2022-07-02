@@ -8,6 +8,9 @@ import shutil
 import math
 from zipfile import ZipFile
 from io import BytesIO
+from sys import platform
+from tkinter import messagebox
+from webbrowser import open_new_tab
 
 def modpath(base, appid, wid):
     return os.path.join(base,'steamapps/workshop/content/',str(appid),str(wid))
@@ -62,7 +65,7 @@ def download():
     
     try:
         # check if steamcmd exists
-        if not os.path.exists(os.path.join(steampath,"steamcmd.exe")):
+        if platform == 'win32' and not os.path.exists(os.path.join(steampath,"steamcmd.exe")):
             output.insert(tk.END,"Installing steamcmd ...")
             output.see(tk.END)
             output.update()
@@ -73,6 +76,17 @@ def download():
             output.insert(tk.END," DONE\n")
             output.see(tk.END)
             output.update()
+        # Linux SteamCMD installation process will differ too much
+        # on different distributions to automate this process in one script.
+        elif platform == 'linux' and shutil.which('steamcmd') is None:
+            response_link = "https://developer.valvesoftware.com/wiki/SteamCMD#Linux"
+            response = messagebox.askokcancel("Error", 
+            "SteamCMD not detected. Detailed instructions on how to "
+            "set it up on your distribution can be found here:\n" + response_link +
+            "\nOpen the link in browser?")
+            if response:
+                open_new_tab(response_link)
+            exit()
         
         
         # get array of IDs
@@ -84,7 +98,10 @@ def download():
             batch = download[i*lim:min((i+1)*lim,l)]
             
             # assemble command line
-            args = [os.path.join(steampath,'steamcmd.exe')]
+            if platform == 'win32':
+                args = [os.path.join(steampath,'steamcmd.exe')]
+            elif platform == 'linux':
+                args = ['steamcmd']
             if login is not None and passw is not None:
                 args.append('+login '+login+' '+passw)
             else:
@@ -94,15 +111,19 @@ def download():
             args.append("+quit")
             
             # call steamcmd
-            process = subprocess.Popen(args, stdout=subprocess.PIPE, errors='ignore', creationflags=subprocess.CREATE_NO_WINDOW)
-        
+            if platform == 'win32':
+                process = subprocess.Popen(args, stdout=subprocess.PIPE, errors='ignore', creationflags=subprocess.CREATE_NO_WINDOW)
+            elif platform == 'linux':
+                process = subprocess.Popen(args, stdout=subprocess.PIPE, errors='ignore')
+
             # show output
             while True:
                 out = process.stdout.readline()
                 #print(out.strip())
                 if m := re.search("Redirecting stderr to",out):
                     output.insert(tk.END,out[:m.span()[0]]+"\n")
-                    break
+                    if platform == 'win32':
+                        break
                 if re.match("-- type 'quit' to exit --",out):
                     continue
                 output.insert(tk.END,out)
@@ -131,7 +152,7 @@ def download():
                         if(os.path.exists(os.path.join(path,str(wid)))):
                             # already exists -> delete old version
                             shutil.rmtree(os.path.join(path,str(wid)))
-                        shutil.move(modpath(steampath,appid,wid),os.path.join(path,str(wid)))
+                        shutil.move(modpath(steampath,appid,wid),os.path.expanduser(os.path.join(path,str(wid))))
                         output.insert(tk.END, " DONE\n")
                         output.see(tk.END)
                         output.update()
@@ -164,19 +185,25 @@ def main():
     cfg = configparser.ConfigParser(interpolation=None)
     cfg.read('downloader.ini')
     # validate ini
-    if 'general' not in cfg:
+    if platform == 'win32' and 'general' not in cfg:
         cfg['general']={'theme': 'default', 'steampath': 'steamcmd', 'batchsize': '50'}
+    elif platform == 'linux' and 'general' not in cfg:
+        cfg['general']={'theme': 'default', 'steampath': "~/.local/share/Steam", 'batchsize': '50'}
     else:
         if 'theme' not in cfg['general']:
             cfg['general']['theme'] = 'default'
-        if 'steampath' not in cfg['general']:
+        if platform == 'win32' and 'steampath' not in cfg['general']:
             cfg['general']['steampath'] = 'steamcmd'
+        elif platform == 'linux' and 'steampath' not in cfg['general']:
+            cfg['general']['steampath'] = "~/.local/share/Steam"
         if 'lim' not in cfg['general']:
             cfg['general']['batchsize'] = '50'
     
     # set globals
-    steampath = cfg['general']['steampath']
+    steampath = os.path.expanduser(cfg['general']['steampath'])
     defaultpath = cfg.get('general','defaultpath',fallback=None)
+    if defaultpath:
+        defaultpath = os.path.expanduser(defaultpath)
     theme = cfg['general']['theme']
     lim = int(cfg['general']['batchsize'])
     login = None

@@ -78,7 +78,7 @@ def download():
             output.update()
         # Linux SteamCMD installation process will differ too much
         # on different distributions to automate this process in one script.
-        elif platform == 'linux' and shutil.which('steamcmd') is None:
+        elif platform == 'linux' and not os.path.exists("/usr/bin/steamcmd") and shutil.which('steamcmd') is None:
             response_link = "https://developer.valvesoftware.com/wiki/SteamCMD#Linux"
             response = messagebox.askokcancel("Error", 
             "SteamCMD not detected. Detailed instructions on how to "
@@ -109,6 +109,7 @@ def download():
             for appid, wid in batch:
                 args.append(f'+workshop_download_item {appid} {int(wid)}')
             args.append("+quit")
+            #print(' '.join(args))
             
             # call steamcmd
             if platform == 'win32':
@@ -185,17 +186,13 @@ def main():
     cfg = configparser.ConfigParser(interpolation=None)
     cfg.read('downloader.ini')
     # validate ini
-    if platform == 'win32' and 'general' not in cfg:
+    if 'general' not in cfg:
         cfg['general']={'theme': 'default', 'steampath': 'steamcmd', 'batchsize': '50'}
-    elif platform == 'linux' and 'general' not in cfg:
-        cfg['general']={'theme': 'default', 'steampath': "~/.local/share/Steam", 'batchsize': '50'}
     else:
         if 'theme' not in cfg['general']:
             cfg['general']['theme'] = 'default'
-        if platform == 'win32' and 'steampath' not in cfg['general']:
+        if 'steampath' not in cfg['general']:
             cfg['general']['steampath'] = 'steamcmd'
-        elif platform == 'linux' and 'steampath' not in cfg['general']:
-            cfg['general']['steampath'] = "~/.local/share/Steam"
         if 'lim' not in cfg['general']:
             cfg['general']['batchsize'] = '50'
     

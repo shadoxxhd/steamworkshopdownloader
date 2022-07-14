@@ -6,11 +6,33 @@ import configparser
 import os
 import shutil
 import math
+import logging
 from zipfile import ZipFile
 from io import BytesIO
 from sys import platform
 from tkinter import messagebox
 from webbrowser import open_new_tab
+
+
+class TextHandler(logging.Handler):
+    """This class allows you to log to a Tkinter Text or ScrolledText widget"""
+    def __init__(self, text):
+        # run the regular Handler __init__
+        logging.Handler.__init__(self)
+        # Store a reference to the Text it will log to
+        self.text = text
+
+    def emit(self, record):
+        msg = self.format(record)
+        def append():
+            self.text.configure(state='normal')
+            self.text.insert(tk.END, msg + '\n')
+            self.text.configure(state='disabled')
+            # Autoscroll to the bottom
+            self.text.yview(tk.END)
+        # This is necessary because we can't modify the Text from other threads
+        self.text.after(0, append)
+
 
 def modpath(base, appid, wid):
     return os.path.join(base,'steamapps/workshop/content/',str(appid),str(wid))
@@ -24,11 +46,14 @@ def getWids(text):
             try:
                 x = requests.get(line)
             except Exception as exc:
-                output.insert(tk.END,"Couldn't get workshop page for "+line +"\n")
-                output.insert(tk.END,str(type(exc))+"\n")
-                output.insert(tk.END,str(exc)+"\n")
-                output.see(tk.END)
-                output.update()
+                logger.error(f"Couldn't get workshop page for {line}")
+                #output.insert(tk.END,"Couldn't get workshop page for "+line +"\n")
+                logger.error(str(type(exc)))
+                #output.insert(tk.END,str(type(exc))+"\n")
+                logger.error(str(exc))
+                #output.insert(tk.END,str(exc)+"\n")
+                #output.see(tk.END)
+                #output.update()
             else: 
                 if re.search("SubscribeCollectionItem",x.text):
                     # collection
@@ -40,9 +65,10 @@ def getWids(text):
                     wid, appid = re.findall(r"ShowAddToCollection[\( ']+(\d+)[ ',]+(\d+)'",x.text)[0]
                     download.append((appid,wid))
                 else:
-                    output.insert(tk.END,'"'+line+'" doesn\'t look like a valid workshop item...\n')
-                    output.see(tk.END)
-                    output.update()
+                    logger.error(f'"{line}" doesn\'t look like a valid workshop item...')
+                    #output.insert(tk.END,'"'+line+'" doesn\'t look like a valid workshop item...\n')
+                    #output.see(tk.END)
+                    #output.update()
     return download
 
 def download():
@@ -54,6 +80,7 @@ def download():
     global URLinput
     global button1
     global output
+    global logger
     global login
     global passw
     global lim
@@ -66,19 +93,23 @@ def download():
     try:
         # check if steamcmd exists
         if platform == 'win32' and not os.path.exists(os.path.join(steampath,"steamcmd.exe")):
-            output.insert(tk.END,"Installing steamcmd ...")
-            output.see(tk.END)
-            output.update()
+            logger.debug("Platform recognized as Windows")
+            logger.info("Installing steamcmd ...")
+            #output.insert(tk.END,"Installing steamcmd ...")
+            #output.see(tk.END)
+            #output.update()
             
             # get it from steam servers
             resp = requests.get("https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip")
             ZipFile(BytesIO(resp.content)).extractall(steampath)
-            output.insert(tk.END," DONE\n")
-            output.see(tk.END)
-            output.update()
+            logger.info("steamcmd installed.")
+            #output.insert(tk.END," DONE\n")
+            #output.see(tk.END)
+            #output.update()
         # Linux SteamCMD installation process will differ too much
         # on different distributions to automate this process in one script.
         elif platform == 'linux' and not os.path.exists("/usr/bin/steamcmd") and shutil.which('steamcmd') is None:
+            logger.debug("Platform recognized as Linux")
             response_link = "https://developer.valvesoftware.com/wiki/SteamCMD#Linux"
             response = messagebox.askokcancel("Error", 
             "SteamCMD not detected. Detailed instructions on how to "
@@ -109,8 +140,9 @@ def download():
             for appid, wid in batch:
                 args.append(f'+workshop_download_item {appid} {int(wid)}')
             args.append("+quit")
-            #print(' '.join(args))
+            logger.debug(' '.join(args))
             
+            logger.debug("steamcmd log start")
             # call steamcmd
             if platform == 'win32':
                 process = subprocess.Popen(args, stdout=subprocess.PIPE, errors='ignore', creationflags=subprocess.CREATE_NO_WINDOW)
@@ -120,24 +152,26 @@ def download():
             # show output
             while True:
                 out = process.stdout.readline()
-                #print(out.strip())
                 if m := re.search("Redirecting stderr to",out):
+                    logger.error(out[:m.span()[0]])
                     output.insert(tk.END,out[:m.span()[0]]+"\n")
                     if platform == 'win32':
                         break
                 if re.match("-- type 'quit' to exit --",out):
                     continue
-                output.insert(tk.END,out)
-                output.see(tk.END)
-                output.update()
+                logger.info(out.strip('\n'))
+                #output.insert(tk.END,out)
+                #output.see(tk.END)
+                #output.update()
                 return_code = process.poll()
                 if return_code is not None:
                     for out in process.stdout.readlines():
-                        #print(out.strip())
-                        output.insert(tk.END,out)
-                    output.see(tk.END)
-                    output.update()
+                        logger.debug(out.strip())
+                        #output.insert(tk.END,out)
+                    #output.see(tk.END)
+                    #output.update()
                     break
+            logger.debug("steamcmd log stop")
                 
             # move mods
             pc = {} # path cache
@@ -147,24 +181,31 @@ def download():
                                     fallback = os.path.join(defaultpath,str(appid))))
                     if os.path.exists(modpath(steampath,appid,wid)):
                         # download was successful
-                        output.insert(tk.END, "Moving "+str(wid)+" ...")
-                        output.see(tk.END)
-                        output.update()
+                        logger.info(f"Moving item {str(wid)} ...")
+                        #output.insert(tk.END, "Moving "+str(wid)+" ...")
+                        #output.see(tk.END)
+                        #output.update()
                         if(os.path.exists(os.path.join(path,str(wid)))):
                             # already exists -> delete old version
                             shutil.rmtree(os.path.join(path,str(wid)))
-                        shutil.move(modpath(steampath,appid,wid),os.path.expanduser(os.path.join(path,str(wid))))
-                        output.insert(tk.END, " DONE\n")
-                        output.see(tk.END)
-                        output.update()
+                        logger.debug(f"from {modpath(steampath,appid,wid)}")
+                        logger.debug(f"to {os.path.expanduser(os.path.join(path,str(wid)))}")
+                        # Fixed the part where it duplicated the mod ID in destination path
+                        shutil.move(modpath(steampath,appid,wid), os.path.expanduser(path))
+                        logger.info(f"Item moved.")
+                        #output.insert(tk.END, " DONE\n")
+                        #output.see(tk.END)
+                        #output.update()
                     pc[appid]=path
         # reset state
         URLinput.delete("1.0", tk.END)
     except Exception as ex:
-        output.insert(tk.END,type(ex))
-        output.insert(tk.END,ex)
-        output.see(tk.END)
-        output.update()
+        logger.error(type(ex))
+        logger.error(ex)
+        #output.insert(tk.END,type(ex))
+        #output.insert(tk.END,ex)
+        #output.see(tk.END)
+        #output.update()
     finally:
         button1.state = tk.NORMAL
         running = False
@@ -179,6 +220,7 @@ def main():
     global button1
     global URLinput
     global output
+    global logger
     global running
     global lim
     running = False
@@ -276,6 +318,25 @@ def main():
     #canvas1.create_window(600,150,window=output)
     output.pack(padx=padx,pady=pady,side=tk.RIGHT,fill=tk.BOTH,expand=1)
     
+    # Using constants to set up formatting is entirely optional
+    LOG_LEVEL = logging.DEBUG
+    LOG_FORMAT = '%(asctime)s,%(msecs)03d [%(levelname)s]: %(message)s'
+    LOG_DATEFMT = "%H:%M:%S"
+    #LOG_DATEFMT = "%Y-%m-%d %H:%M:%S" (Verbose)
+
+    # Create formatter
+    formatter = logging.Formatter(LOG_FORMAT, datefmt=LOG_DATEFMT)
+
+    # Instantiate handler
+    text_handler = TextHandler(output)
+    text_handler.setLevel(LOG_LEVEL)
+    text_handler.setFormatter(formatter)
+
+    # Add the handler to logger
+    logger = logging.getLogger()
+    logger.addHandler(text_handler)
+    logger.setLevel(LOG_LEVEL)
+
     root.mainloop()
     
     if not os.path.exists('downloader.ini'): # remove this when in-app options menu exists

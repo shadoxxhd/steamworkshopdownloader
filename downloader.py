@@ -14,6 +14,7 @@ from tkinter import messagebox
 from webbrowser import open_new_tab
 
 
+# Source: gist.github.com/moshekaplan/c425f861de7bbf28ef06
 class TextHandler(logging.Handler):
     """This class allows you to log to a Tkinter Text or ScrolledText widget"""
     def __init__(self, text):

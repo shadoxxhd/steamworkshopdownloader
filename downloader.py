@@ -154,7 +154,7 @@ def download():
             while True:
                 out = process.stdout.readline()
                 if m := re.search("Redirecting stderr to",out):
-                    logger.error(out[:m.span()[0]])
+                    logger.info(out[:m.span()[0]])
                     output.insert(tk.END,out[:m.span()[0]]+"\n")
                     if platform == 'win32':
                         break
@@ -165,9 +165,9 @@ def download():
                 #output.see(tk.END)
                 #output.update()
                 return_code = process.poll()
-                if return_code is not None:
+                if return_code:
                     for out in process.stdout.readlines():
-                        logger.debug(out.strip())
+                        logger.info(out.strip())
                         #output.insert(tk.END,out)
                     #output.see(tk.END)
                     #output.update()

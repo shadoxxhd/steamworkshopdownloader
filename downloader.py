@@ -315,7 +315,7 @@ def main():
     #canvas1.create_window(250,270,window=button1)
     button1.pack(padx=padx,pady=pady,side=tk.BOTTOM, fill=tk.X)
     
-    output = tk.Text(root, width=56, height = 20, fg=textcol, bg=button1['bg'], font=("Consolas",10))
+    output = tk.Text(root, width=56, height = 20, fg=textcol, bg=button1['bg'], font=("Consolas",10), state='disabled')
     #canvas1.create_window(600,150,window=output)
     output.pack(padx=padx,pady=pady,side=tk.RIGHT,fill=tk.BOTH,expand=1)
     

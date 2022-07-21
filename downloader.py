@@ -154,10 +154,8 @@ def download():
             while True:
                 out = process.stdout.readline()
                 if m := re.search("Redirecting stderr to",out):
-                    logger.error(out[:m.span()[0]])
+                    logger.info(out[:m.span()[0]])
                     output.insert(tk.END,out[:m.span()[0]]+"\n")
-                    if platform == 'win32':
-                        break
                 if re.match("-- type 'quit' to exit --",out):
                     continue
                 logger.info(out.strip('\n'))
@@ -167,7 +165,7 @@ def download():
                 return_code = process.poll()
                 if return_code is not None:
                     for out in process.stdout.readlines():
-                        logger.debug(out.strip())
+                        logger.info(out.strip())
                         #output.insert(tk.END,out)
                     #output.see(tk.END)
                     #output.update()
@@ -315,7 +313,7 @@ def main():
     #canvas1.create_window(250,270,window=button1)
     button1.pack(padx=padx,pady=pady,side=tk.BOTTOM, fill=tk.X)
     
-    output = tk.Text(root, width=56, height = 20, fg=textcol, bg=button1['bg'], font=("Consolas",10))
+    output = tk.Text(root, width=56, height = 20, fg=textcol, bg=button1['bg'], font=("Consolas",10), state='disabled')
     #canvas1.create_window(600,150,window=output)
     output.pack(padx=padx,pady=pady,side=tk.RIGHT,fill=tk.BOTH,expand=1)
     

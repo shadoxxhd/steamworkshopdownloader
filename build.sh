@@ -1,1 +1,1 @@
-pyinstaller --onefile downloader.py
+pyinstaller --onefile downloader.pyw

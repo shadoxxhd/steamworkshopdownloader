@@ -122,7 +122,7 @@ def download():
             for appid, wid in batch:
                 if appid in pc or cfg.get(str(appid),'path',fallback=None) or defaultpath:
                     path = pc.get(appid,cfg.get(str(appid),'path',
-                                    fallback = os.path.join(defaultpath,str(appid))))
+                                    fallback = defaultpath and os.path.join(defaultpath,str(appid))))
                     if os.path.exists(modpath(steampath,appid,wid)):
                         # download was successful
                         output.insert(tk.END, "Moving "+str(wid)+" ...")

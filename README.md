@@ -23,7 +23,7 @@ ___
 
 Open the downloader.ini file with any text editor and change or add the relevant values:
 
-#### [general] section
+#### `[general]` section
 
 - `steampath` : Location of the steamcmd.exe the program should use (either relative or absolute path)
 - `theme` : Color scheme to use. Currently supported are 'default', 'sdark', 'solar, black' and 'white'.
@@ -34,7 +34,7 @@ Open the downloader.ini file with any text editor and change or add the relevant
 
 If both `login` and `passw` are provided, it will try a non-anonymous login before downloading. When using 2FA, manual configuration of steamcmd might be neccassary.
 
-#### [appid] sections
+#### `[appid]` sections
 
 - `path` : Where downloaded mods for a certain game should be moved. Old versions of the mods in this location will be overwritten.
 
@@ -53,3 +53,18 @@ defaultpath = mods
 # Stellaris
 path = D:\games\stellaris\mods
 ```
+
+___
+
+### Non-anonymous downloads
+
+To download items that require a steam account, you have to set the `login` and `passw` options in the `[general]` section.
+
+In addition, if you are using SteamGuard, you will also need to authenticate the steamcmd installation to be able to download items with your account:
+- If you never used the downloader before (or moved the `downloader.exe` to a new location), start the program and click `Download`. It will install steamcmd. Once it says `DONE`, you can close the window.
+- Go to the folder containing `downloader.exe`, open the subfolder `steamcmd` and launch `steamcmd.exe`.
+- Wait for it to finish updating (it will say `Steam>` when it's done), then enter `login <login>` with <login> being your username.
+- Enter your password when it asks you for it. Your password will be invisible.
+- Enter your SteamGuard code.
+- If no errors appear, your installation is now authenticated.
+- Enter `quit` to close steamcmd.

@@ -156,8 +156,6 @@ def download():
                 if m := re.search("Redirecting stderr to",out):
                     logger.info(out[:m.span()[0]])
                     output.insert(tk.END,out[:m.span()[0]]+"\n")
-                    if platform == 'win32':
-                        break
                 if re.match("-- type 'quit' to exit --",out):
                     continue
                 logger.info(out.strip('\n'))

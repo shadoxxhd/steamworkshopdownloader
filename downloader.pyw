@@ -163,7 +163,7 @@ def download():
                 #output.see(tk.END)
                 #output.update()
                 return_code = process.poll()
-                if return_code:
+                if return_code is not None:
                     for out in process.stdout.readlines():
                         logger.info(out.strip())
                         #output.insert(tk.END,out)
@@ -180,18 +180,24 @@ def download():
                                     fallback = defaultpath and os.path.join(defaultpath,str(appid))))
                     if os.path.exists(modpath(steampath,appid,wid)):
                         # download was successful
-                        logger.info(f"Moving item {str(wid)} ...")
+                        logger.info(f"Moving item {str(wid)} ... DONE")
                         #output.insert(tk.END, "Moving "+str(wid)+" ...")
                         #output.see(tk.END)
                         #output.update()
                         if(os.path.exists(os.path.join(path,str(wid)))):
                             # already exists -> delete old version
                             shutil.rmtree(os.path.join(path,str(wid)))
-                        logger.debug(f"from {modpath(steampath,appid,wid)}")
-                        logger.debug(f"to {os.path.expanduser(os.path.join(path,str(wid)))}")
-                        # Fixed the part where it duplicated the mod ID in destination path
-                        shutil.move(modpath(steampath,appid,wid), os.path.expanduser(path))
-                        logger.info(f"Item moved.")
+                        log_path_from = modpath(steampath,appid,wid)
+                        log_path_to = os.path.expanduser(os.path.join(path,str(wid)))
+                        log_len_diff = len(log_path_from) - len(log_path_to)
+                        logger.debug(f"from {-log_len_diff*' '}{log_path_from}")
+                        logger.debug(f"to   {log_len_diff*' '}{log_path_to}")
+                        # Windows: shutil.move('C:/example_from/target', 'C:/example_to/target')
+                        # Linux: shutil.move('~/example_from/target', '~/example_to')
+                        if platform == 'win32':
+                            shutil.move(modpath(steampath,appid,wid), os.path.join(path,str(wid)))
+                        if platform == 'linux':
+                            shutil.move(modpath(steampath,appid,wid), os.path.expanduser(path))
                         #output.insert(tk.END, " DONE\n")
                         #output.see(tk.END)
                         #output.update()

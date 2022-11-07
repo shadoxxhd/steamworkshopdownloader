@@ -72,4 +72,4 @@ In addition, if you are using SteamGuard, you will also need to authenticate the
 
 ___
 ## Windows 7 compatibility
-You need to install https://github.com/nalexandru/api-ms-win-core-path-HACK or some alternative to run recent python projects on win7.
+You need to either install [the missing dll](https://github.com/nalexandru/api-ms-win-core-path-HACK) (or some alternative) to run the executable, or install the [NulAsh python fork](https://github.com/NulAsh/cpython/releases) and run the `downloader.pyw` file.

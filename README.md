@@ -34,6 +34,7 @@ Open the downloader.ini file with any text editor and change or add the relevant
 
 If both `login` and `passw` are provided, it will try a non-anonymous login before downloading. When using 2FA, manual configuration of steamcmd might be neccassary.
 
+
 #### `[appid]` sections
 
 - `path` : Where downloaded mods for a certain game should be moved. Old versions of the mods in this location will be overwritten.
@@ -68,3 +69,7 @@ In addition, if you are using SteamGuard, you will also need to authenticate the
 - Enter your SteamGuard code.
 - If no errors appear, your installation is now authenticated.
 - Enter `quit` to close steamcmd.
+
+___
+## Windows 7 compatibility
+You need to install https://github.com/nalexandru/api-ms-win-core-path-HACK or some alternative to run recent python projects on win7.

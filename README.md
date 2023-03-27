@@ -17,6 +17,10 @@ Collections are also supported now.
 The first download can take several minutes, since steamcmd needs to download/update itself. After that, initiation of the download(s) should only take a few seconds.
 When downloading many and/or large items, the window might stop responding while the download is ongoing.
 
+### ERROR
+
+If the game you are downloading items for is on the supported list and you get `ERROR! Download item ... failed (Failure).`, delete the steamcmd folder, restart the downloader and try the mod download again.
+
 ___
 
 ### CONFIGURATION

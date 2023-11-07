@@ -1,3 +1,5 @@
+# Steam Workshop Downloader
+
 Simple steam workshop downloader using steamcmd.
 
 List of supported games for anonymous download: https://steamdb.info/sub/17906/apps/

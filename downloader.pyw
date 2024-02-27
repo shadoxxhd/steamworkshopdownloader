@@ -6,6 +6,7 @@ import configparser
 import os
 import shutil
 import math
+import time
 from zipfile import ZipFile
 from io import BytesIO
 
@@ -71,6 +72,7 @@ def download():
     global login
     global passw
     global lim
+    global showConsole
     
     if running:
         return
@@ -112,10 +114,18 @@ def download():
             args.append("+quit")
             
             # call steamcmd
-            process = subprocess.Popen(args, stdout=subprocess.PIPE, errors='ignore', creationflags=subprocess.CREATE_NO_WINDOW)
+            if showConsole:
+                process = subprocess.Popen(args, stdout=None, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            else:
+                process = subprocess.Popen(args, stdout=subprocess.PIPE, errors='ignore', creationflags=subprocess.CREATE_NO_WINDOW)
         
             # show output
             while True:
+                if showConsole:
+                    time.sleep(1)
+                    if process.poll() is not None:
+                        break
+                    continue
                 out = process.stdout.readline()
                 #print(out.strip())
                 if m := re.search("Redirecting stderr to",out):
@@ -185,6 +195,7 @@ def main():
     global output
     global running
     global lim
+    global showConsole
     running = False
     
     cfg = configparser.ConfigParser(interpolation=None)
@@ -199,12 +210,14 @@ def main():
             cfg['general']['steampath'] = 'steamcmd'
         if 'lim' not in cfg['general']:
             cfg['general']['batchsize'] = '50'
+        if 'showConsole' not in cfg['general']:
+            cfg['general']['showConsole'] = 'false'
     
     # set globals
     steampath = cfg['general']['steampath']
     defaultpath = cfg.get('general','defaultpath',fallback=None)
     theme = cfg['general']['theme']
-    lim = int(cfg['general']['batchsize'])
+    lim = cfg.getint('general','batchsize')
     login = None
     passw = None
     if 'login' in cfg['general']:
@@ -212,6 +225,7 @@ def main():
         if 'passw' in cfg['general']:
             passw = cfg['general']['passw']
     
+    showConsole = cfg.getboolean('general','showConsole')
     padx = 7
     pady = 4
     

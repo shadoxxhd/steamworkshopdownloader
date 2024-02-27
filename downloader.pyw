@@ -85,6 +85,8 @@ def download():
         sgcode = None
         if steamguard:
             sgcode = SGinput.get()
+
+        errors = {}
         
         for i in range(math.ceil(l/lim)):
         #for appid in download:
@@ -127,6 +129,12 @@ def download():
                     for out in process.stdout.readlines():
                         log(out,0,0)
                     log("",0)
+                    if return_code == 0:
+                        # todo: check for individual status
+                        pass
+                    else:
+                        for wid in batch:
+                            errors[wid]=1
                     break
                 
             # move mods
@@ -145,7 +153,8 @@ def download():
                         log(" DONE")
                     pc[appid]=path
         # reset state
-        URLinput.delete("1.0", tk.END)
+        if(len(errors)==0): # don't reset input if steamcmd crashed; todo: check individual items
+            URLinput.delete("1.0", tk.END)
     except Exception as ex:
         log(type(ex))
         log(ex)

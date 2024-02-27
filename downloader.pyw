@@ -71,6 +71,8 @@ def download():
     global output
     global login
     global passw
+    global steamguard
+    global SGinput
     global lim
     global showConsole
     
@@ -98,6 +100,9 @@ def download():
         # get array of IDs
         download = getWids(URLinput.get("1.0",tk.END))
         l = len(download)
+        sgcode = None
+        if steamguard:
+            sgcode = SGinput.get()#("1.0","end-1c")
         
         for i in range(math.ceil(l/lim)):
         #for appid in download:
@@ -106,7 +111,10 @@ def download():
             # assemble command line
             args = [os.path.join(steampath,'steamcmd.exe')]
             if login is not None and passw is not None:
-                args.append('+login '+login+' '+passw)
+                args.append('+login '+login+' '+passw+(' '+sgcode if steamguard else ''))
+                log(args[-1])
+            elif login is not None:
+                args.append('+login '+login)
             else:
                 args.append('+login anonymous')
             for appid, wid in batch:
@@ -190,9 +198,11 @@ def main():
     global defaultpath
     global login
     global passw
+    global steamguard
     global button1
     global URLinput
     global output
+    global SGinput
     global running
     global lim
     global showConsole
@@ -220,11 +230,16 @@ def main():
     lim = cfg.getint('general','batchsize')
     login = None
     passw = None
+    steamguard = None
     if 'login' in cfg['general']:
         login = cfg['general']['login']
         if 'passw' in cfg['general']:
             passw = cfg['general']['passw']
-    
+        if 'steamguard' in cfg['general']:
+            steamguard = cfg.getboolean('general','steamguard')
+        else:
+            cfg['general']['steamguard'] = "no"
+
     showConsole = cfg.getboolean('general','showConsole')
     padx = 7
     pady = 4
@@ -288,9 +303,24 @@ def main():
     #canvas1.create_window(250,270,window=button1)
     button1.pack(padx=padx,pady=pady,side=tk.BOTTOM, fill=tk.X)
     
-    output = tk.Text(root, width=56, height = 20, fg=textcol, bg=button1['bg'], font=("Consolas",10))
-    #canvas1.create_window(600,150,window=output)
-    output.pack(padx=padx,pady=pady,side=tk.RIGHT,fill=tk.BOTH,expand=1)
+    output = None
+    frame2 = None
+    if(steamguard):
+        frame2 = tk.Frame(root, bg=bg1)
+        frame2.pack(padx=0,pady=0,side=tk.LEFT,fill=tk.BOTH, expand=1)
+
+        output = tk.Text(frame2 or root, width=56, height = 20, fg=textcol, bg=button1['bg'], font=("Consolas",10), state="disabled")
+        output.pack(padx=padx,pady=pady,side=tk.BOTTOM if frame2 else tk.RIGHT,fill=tk.BOTH,expand=1)
+
+        SGlabel = tk.Label(frame2, text="SteamGuard Code", fg=textcol, bg=bg1)
+        SGlabel.pack(padx=padx, pady=pady, side=tk.LEFT, fill=tk.X, expand = 0)
+
+        SGinput = tk.Entry(frame2, width=5, fg=textcol,bg=bg2)
+        SGinput.pack(padx=padx, pady=pady, side=tk.LEFT, fill=tk.X, expand = 1)
+    else:
+        output = tk.Text(frame2 or root, width=56, height = 20, fg=textcol, bg=button1['bg'], font=("Consolas",10), state="disabled")
+        #canvas1.create_window(600,150,window=output)
+        output.pack(padx=padx,pady=pady,side=tk.BOTTOM if frame2 else tk.RIGHT,fill=tk.BOTH,expand=1)
     
     root.mainloop()
     

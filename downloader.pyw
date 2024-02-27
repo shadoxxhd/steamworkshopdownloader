@@ -9,18 +9,32 @@ import math
 import time
 from zipfile import ZipFile
 from io import BytesIO
+from urllib.parse import unquote
+
+baseurl = "https://steamcommunity.com/sharedfiles/filedetails/?id="
 
 def modpath(base, appid, wid):
     return os.path.join(base,'steamapps/workshop/content/',str(appid),str(wid))
 
+def getDirSize(path):
+    return sum([e.stat().st_size for e in os.scandir(path)])
+
+def sizeAsBytes(string):
+    a,b = string.split()
+    mult = {'B': 1, 'KB': 10**3, 'MB': 10**6, 'GB': 10**9, 'TB': 10**12}
+    return int(float(a)*mult.get(b,1))
+
 # faster download when mixing games
 def getWids(text):
     download = []
+    totalsize = 0
     for line in text.splitlines():
         if len(line)>0:
             # check for collection
             try:
-                x = requests.get(line)
+                wid = re.match("(?>[^\\d]*)(\\d+)",line).match.group(1)
+                #x = requests.get(line)
+                x = requests.get(baseurl+wid)
             except Exception as exc:
                 log("Couldn't get workshop page for "+line)
                 log(type(exc))
@@ -30,14 +44,27 @@ def getWids(text):
                     # collection
                     dls = re.findall(r"SubscribeCollectionItem[\( ']+(\d+)[ ',]+(\d+)'",x.text)
                     for wid, appid in dls:
-                        download.append((appid,wid))
+                        size = -1
+                        name = str(wid)
+                        if options.getDetails:
+                            try:
+                                y = requests.get(baseurl+wid)
+                                size = sizeAsBytes(re.findall(r'detailsStatRight">([\d\. KMGTB]+)', y.text)[0])
+                                name = unquote(re.findall(r'workshopItemTitle">([^<]*)<', y.text)[0])
+                                totalsize += size
+                            except:
+                                log("Couldn't get size for workshop item "+wid)
+                        download.append((appid,wid,name,size))
                 elif re.search("ShowAddToCollection",x.text):
                     # single item
                     wid, appid = re.findall(r"ShowAddToCollection[\( ']+(\d+)[ ',]+(\d+)'",x.text)[0]
-                    download.append((appid,wid))
+                    size = sizeAsBytes(re.findall(r'detailsStatRight">([\d\. KMGTB]+)', x.text)[0])
+                    name = unquote(re.findall(r'workshopItemTitle">([^<]*)<', x.text)[0])
+                    download.append((appid,wid,name,size))
+                    totalsize += size
                 else:
                     log('"'+line+'" doesn\'t look like a valid workshop item...\n')
-    return download
+    return (download, totalsize)
 
 def log(data, newline = True, update = True):
     global output
@@ -80,7 +107,7 @@ def download():
             log(" DONE")
         
         # get array of IDs
-        download = getWids(URLinput.get("1.0",tk.END))
+        download, totalsize = getWids(URLinput.get("1.0",tk.END))
         l = len(download)
         sgcode = None
         if steamguard:

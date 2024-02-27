@@ -183,7 +183,7 @@ def main():
     cfg.read('downloader.ini')
     # validate ini
     if 'general' not in cfg:
-        cfg['general']={'theme': 'default', 'steampath': 'steamcmd', 'batchsize': '50', 'showConsole': 'no', 'defaultpath': 'mods'}
+        cfg['general']={'theme': 'default', 'steampath': 'steamcmd', 'batchsize': '50', 'showConsole': 'no', 'defaultpath': 'mods', 'steamguard': 'yes'}
     else:
         if 'theme' not in cfg['general']:
             cfg['general']['theme'] = 'default'
@@ -210,6 +210,7 @@ def main():
             steamguard = cfg.getboolean('general','steamguard')
         else:
             cfg['general']['steamguard'] = "no"
+            steamguard = False
 
     showConsole = cfg.getboolean('general','showConsole')
     padx = 7

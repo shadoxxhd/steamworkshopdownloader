@@ -48,6 +48,9 @@ def log(data, newline = True, update = True):
         output.see(tk.END)
         output.update()
 
+def options():
+    log("coming soon")
+
 def download():
     # don't start multiple steamcmd instances
     global running
@@ -213,8 +216,8 @@ def main():
             steamguard = False
 
     showConsole = cfg.getboolean('general','showConsole')
-    padx = 7
-    pady = 4
+    padx = 3
+    pady = 3
     
     if theme=='sdark':
         # Solarized dark
@@ -263,6 +266,9 @@ def main():
     button1 = tk.Button(frame, text='Download', command=download, fg=textcol, bg=bg1) # root
     button1.pack(padx=padx,pady=pady,side=tk.LEFT, fill=tk.X, expand=1)
 
+    button2 = tk.Button(frame, text="⚙", command=options, fg=textcol, bg=bg1)
+    button2.pack(padx=padx, pady=pady, side=tk.LEFT)
+    
     output = tk.Text(root, width=56, height = 20, fg=textcol, bg=button1['bg'], font=("Consolas",10), state="disabled")
     output.pack(padx=padx,pady=pady,side=tk.BOTTOM,fill=tk.BOTH,expand=1)
 

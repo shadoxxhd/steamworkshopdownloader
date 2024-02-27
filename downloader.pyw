@@ -22,11 +22,6 @@ def getWids(text):
             try:
                 x = requests.get(line)
             except Exception as exc:
-                #output.insert(tk.END,"Couldn't get workshop page for "+line +"\n")
-                #output.insert(tk.END,str(type(exc))+"\n")
-                #output.insert(tk.END,str(exc)+"\n")
-                #output.see(tk.END)
-                #output.update()
                 log("Couldn't get workshop page for "+line)
                 log(type(exc))
                 log(exc)
@@ -41,17 +36,10 @@ def getWids(text):
                     wid, appid = re.findall(r"ShowAddToCollection[\( ']+(\d+)[ ',]+(\d+)'",x.text)[0]
                     download.append((appid,wid))
                 else:
-                    #output.insert(tk.END,'"'+line+'" doesn\'t look like a valid workshop item...\n')
-                    #output.see(tk.END)
-                    #output.update()
                     log('"'+line+'" doesn\'t look like a valid workshop item...\n')
     return download
 
 def log(data, newline = True, update = True):
-    #global logtext
-    #logtext += str(data) + (addnewline and "\n" or "")
-    #output.config(text=logtext)
-    #output.update()
     global output
     output.config(state='normal')
     output.insert(tk.END,str(data)+("\n" if newline else ""))
@@ -85,24 +73,18 @@ def download():
         # check if steamcmd exists
         if not os.path.exists(os.path.join(steampath,"steamcmd.exe")):
             log("Installing steamcmd ...",0)
-            #output.see(tk.END)
-            #output.update()
             
             # get it from steam servers
             resp = requests.get("https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip")
             ZipFile(BytesIO(resp.content)).extractall(steampath)
             log(" DONE")
-            #output.insert(tk.END," DONE\n")
-            #output.see(tk.END)
-            #output.update()
-        
         
         # get array of IDs
         download = getWids(URLinput.get("1.0",tk.END))
         l = len(download)
         sgcode = None
         if steamguard:
-            sgcode = SGinput.get()#("1.0","end-1c")
+            sgcode = SGinput.get()
         
         for i in range(math.ceil(l/lim)):
         #for appid in download:
@@ -112,7 +94,6 @@ def download():
             args = [os.path.join(steampath,'steamcmd.exe')]
             if login is not None and passw is not None:
                 args.append('+login '+login+' '+passw+(' '+sgcode if steamguard else ''))
-                log(args[-1])
             elif login is not None:
                 args.append('+login '+login)
             else:
@@ -135,25 +116,16 @@ def download():
                         break
                     continue
                 out = process.stdout.readline()
-                #print(out.strip())
                 if m := re.search("Redirecting stderr to",out):
-                    #output.insert(tk.END,out[:m.span()[0]]+"\n")
                     log(out[:m.span()[0]],1,0)
                     break
                 if re.match("-- type 'quit' to exit --",out):
                     continue
                 log(out)
-                #output.insert(tk.END,out)
-                #output.see(tk.END)
-                #output.update()
                 return_code = process.poll()
                 if return_code is not None:
                     for out in process.stdout.readlines():
-                        #print(out.strip())
-                        #output.insert(tk.END,out)
                         log(out,0,0)
-                    #output.see(tk.END)
-                    #output.update()
                     log("",0)
                     break
                 
@@ -165,26 +137,16 @@ def download():
                                     fallback = defaultpath and os.path.join(defaultpath,str(appid))))
                     if os.path.exists(modpath(steampath,appid,wid)):
                         # download was successful
-                        #output.insert(tk.END, "Moving "+str(wid)+" ...")
-                        #output.see(tk.END)
-                        #output.update()
                         log("Moving "+str(wid)+" ...",0,0)
                         if(os.path.exists(os.path.join(path,str(wid)))):
                             # already exists -> delete old version
                             shutil.rmtree(os.path.join(path,str(wid)))
                         shutil.move(modpath(steampath,appid,wid),os.path.join(path,str(wid)))
-                        #output.insert(tk.END, " DONE\n")
-                        #output.see(tk.END)
-                        #output.update()
                         log(" DONE")
                     pc[appid]=path
         # reset state
         URLinput.delete("1.0", tk.END)
     except Exception as ex:
-        #output.insert(tk.END,type(ex))
-        #output.insert(tk.END,ex)
-        #output.see(tk.END)
-        #output.update()
         log(type(ex))
         log(ex)
     finally:
@@ -281,46 +243,25 @@ def main():
     frame = tk.Frame(root, bg=bg1)
     frame.pack(padx=0,pady=0,side=tk.LEFT, fill=tk.Y)
     
-    #canvas1 = tk.Canvas(root, width = 820, height = 300)
-    #canvas1.pack()
-    
-    #textAppid = tk.Text(root, width = 30, height = 1)
-    #canvas1.create_window(250,50,window=textAppid)
-    
-    #labelAppid = tk.Label(root, text='App ID')
-    #canvas1.create_window(50,50,window=labelAppid)
-    
     labelURLi = tk.Label(frame, text='Workshop URLs', fg=textcol, bg=bg1)
-    #canvas1.create_window(50,140,window=labelURLi)
     labelURLi.pack(padx=padx,pady=pady,side=tk.TOP)
     
     URLinput = tk.Text(frame, width = 67, height = 20, fg=textcol, bg=bg2) # root
-    #canvas1.create_window(250,140,window=URLinput)
     URLinput.pack(padx=padx,pady=pady,side=tk.TOP, expand=1, fill=tk.Y)
     URLinput.bind("<Button-3>", lambda a: URLinput.insert(tk.END,root.clipboard_get()+"\n"))
     
     button1 = tk.Button(frame, text='Download', command=download, fg=textcol, bg=bg1) # root
-    #canvas1.create_window(250,270,window=button1)
-    button1.pack(padx=padx,pady=pady,side=tk.BOTTOM, fill=tk.X)
-    
-    output = None
-    frame2 = None
+    button1.pack(padx=padx,pady=pady,side=tk.LEFT, fill=tk.X, expand=1)
+
+    output = tk.Text(root, width=56, height = 20, fg=textcol, bg=button1['bg'], font=("Consolas",10), state="disabled")
+    output.pack(padx=padx,pady=pady,side=tk.BOTTOM,fill=tk.BOTH,expand=1)
+
     if(steamguard):
-        frame2 = tk.Frame(root, bg=bg1)
-        frame2.pack(padx=0,pady=0,side=tk.LEFT,fill=tk.BOTH, expand=1)
+        SGlabel = tk.Label(root, text="SteamGuard Code", fg=textcol, bg=bg1)
+        SGlabel.pack(padx=padx, pady=pady, side=tk.LEFT, expand=0, fill=tk.X)
 
-        output = tk.Text(frame2 or root, width=56, height = 20, fg=textcol, bg=button1['bg'], font=("Consolas",10), state="disabled")
-        output.pack(padx=padx,pady=pady,side=tk.BOTTOM if frame2 else tk.RIGHT,fill=tk.BOTH,expand=1)
-
-        SGlabel = tk.Label(frame2, text="SteamGuard Code", fg=textcol, bg=bg1)
-        SGlabel.pack(padx=padx, pady=pady, side=tk.LEFT, fill=tk.X, expand = 0)
-
-        SGinput = tk.Entry(frame2, width=5, fg=textcol,bg=bg2)
-        SGinput.pack(padx=padx, pady=pady, side=tk.LEFT, fill=tk.X, expand = 1)
-    else:
-        output = tk.Text(frame2 or root, width=56, height = 20, fg=textcol, bg=button1['bg'], font=("Consolas",10), state="disabled")
-        #canvas1.create_window(600,150,window=output)
-        output.pack(padx=padx,pady=pady,side=tk.BOTTOM if frame2 else tk.RIGHT,fill=tk.BOTH,expand=1)
+        SGinput = tk.Entry(root, width=5, fg=textcol,bg=bg2)
+        SGinput.pack(padx=padx, pady=pady, side=tk.LEFT, expand=1, fill=tk.X)
     
     root.mainloop()
     

@@ -21,11 +21,14 @@ def getWids(text):
             try:
                 x = requests.get(line)
             except Exception as exc:
-                output.insert(tk.END,"Couldn't get workshop page for "+line +"\n")
-                output.insert(tk.END,str(type(exc))+"\n")
-                output.insert(tk.END,str(exc)+"\n")
-                output.see(tk.END)
-                output.update()
+                #output.insert(tk.END,"Couldn't get workshop page for "+line +"\n")
+                #output.insert(tk.END,str(type(exc))+"\n")
+                #output.insert(tk.END,str(exc)+"\n")
+                #output.see(tk.END)
+                #output.update()
+                log("Couldn't get workshop page for "+line)
+                log(type(exc))
+                log(exc)
             else: 
                 if re.search("SubscribeCollectionItem",x.text):
                     # collection
@@ -37,10 +40,24 @@ def getWids(text):
                     wid, appid = re.findall(r"ShowAddToCollection[\( ']+(\d+)[ ',]+(\d+)'",x.text)[0]
                     download.append((appid,wid))
                 else:
-                    output.insert(tk.END,'"'+line+'" doesn\'t look like a valid workshop item...\n')
-                    output.see(tk.END)
-                    output.update()
+                    #output.insert(tk.END,'"'+line+'" doesn\'t look like a valid workshop item...\n')
+                    #output.see(tk.END)
+                    #output.update()
+                    log('"'+line+'" doesn\'t look like a valid workshop item...\n')
     return download
+
+def log(data, newline = True, update = True):
+    #global logtext
+    #logtext += str(data) + (addnewline and "\n" or "")
+    #output.config(text=logtext)
+    #output.update()
+    global output
+    output.config(state='normal')
+    output.insert(tk.END,str(data)+("\n" if newline else ""))
+    output.config(state='disabled')
+    if(update):
+        output.see(tk.END)
+        output.update()
 
 def download():
     # don't start multiple steamcmd instances
@@ -63,16 +80,17 @@ def download():
     try:
         # check if steamcmd exists
         if not os.path.exists(os.path.join(steampath,"steamcmd.exe")):
-            output.insert(tk.END,"Installing steamcmd ...")
-            output.see(tk.END)
-            output.update()
+            log("Installing steamcmd ...",0)
+            #output.see(tk.END)
+            #output.update()
             
             # get it from steam servers
             resp = requests.get("https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip")
             ZipFile(BytesIO(resp.content)).extractall(steampath)
-            output.insert(tk.END," DONE\n")
-            output.see(tk.END)
-            output.update()
+            log(" DONE")
+            #output.insert(tk.END," DONE\n")
+            #output.see(tk.END)
+            #output.update()
         
         
         # get array of IDs
@@ -101,20 +119,24 @@ def download():
                 out = process.stdout.readline()
                 #print(out.strip())
                 if m := re.search("Redirecting stderr to",out):
-                    output.insert(tk.END,out[:m.span()[0]]+"\n")
+                    #output.insert(tk.END,out[:m.span()[0]]+"\n")
+                    log(out[:m.span()[0]],1,0)
                     break
                 if re.match("-- type 'quit' to exit --",out):
                     continue
-                output.insert(tk.END,out)
-                output.see(tk.END)
-                output.update()
+                log(out)
+                #output.insert(tk.END,out)
+                #output.see(tk.END)
+                #output.update()
                 return_code = process.poll()
                 if return_code is not None:
                     for out in process.stdout.readlines():
                         #print(out.strip())
-                        output.insert(tk.END,out)
-                    output.see(tk.END)
-                    output.update()
+                        #output.insert(tk.END,out)
+                        log(out,0,0)
+                    #output.see(tk.END)
+                    #output.update()
+                    log("",0)
                     break
                 
             # move mods
@@ -125,24 +147,28 @@ def download():
                                     fallback = defaultpath and os.path.join(defaultpath,str(appid))))
                     if os.path.exists(modpath(steampath,appid,wid)):
                         # download was successful
-                        output.insert(tk.END, "Moving "+str(wid)+" ...")
-                        output.see(tk.END)
-                        output.update()
+                        #output.insert(tk.END, "Moving "+str(wid)+" ...")
+                        #output.see(tk.END)
+                        #output.update()
+                        log("Moving "+str(wid)+" ...",0,0)
                         if(os.path.exists(os.path.join(path,str(wid)))):
                             # already exists -> delete old version
                             shutil.rmtree(os.path.join(path,str(wid)))
                         shutil.move(modpath(steampath,appid,wid),os.path.join(path,str(wid)))
-                        output.insert(tk.END, " DONE\n")
-                        output.see(tk.END)
-                        output.update()
+                        #output.insert(tk.END, " DONE\n")
+                        #output.see(tk.END)
+                        #output.update()
+                        log(" DONE")
                     pc[appid]=path
         # reset state
         URLinput.delete("1.0", tk.END)
     except Exception as ex:
-        output.insert(tk.END,type(ex))
-        output.insert(tk.END,ex)
-        output.see(tk.END)
-        output.update()
+        #output.insert(tk.END,type(ex))
+        #output.insert(tk.END,ex)
+        #output.see(tk.END)
+        #output.update()
+        log(type(ex))
+        log(ex)
     finally:
         button1.state = tk.NORMAL
         running = False

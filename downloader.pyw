@@ -174,7 +174,7 @@ def main():
     cfg.read('downloader.ini')
     # validate ini
     if 'general' not in cfg:
-        cfg['general']={'theme': 'default', 'steampath': 'steamcmd', 'batchsize': '50'}
+        cfg['general']={'theme': 'default', 'steampath': 'steamcmd', 'batchsize': '50', 'showConsole': 'no', 'defaultpath': 'mods'}
     else:
         if 'theme' not in cfg['general']:
             cfg['general']['theme'] = 'default'
@@ -183,7 +183,7 @@ def main():
         if 'lim' not in cfg['general']:
             cfg['general']['batchsize'] = '50'
         if 'showConsole' not in cfg['general']:
-            cfg['general']['showConsole'] = 'false'
+            cfg['general']['showConsole'] = 'no'
     
     # set globals
     steampath = cfg['general']['steampath']

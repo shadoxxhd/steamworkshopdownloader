@@ -543,12 +543,18 @@ def download():
             # move mods
             pc = {} # path cache
             for appid, wid, name, size in batch:
+                if wid not in status:
+                    errors[wid]="no record"
+                elif status[wid] == 1: # "still downloading" -> makes no sense
+                    pass # TODO
+                elif status[wid] != 2: # download not successful
+                    continue
                 if appid in pc or options.cfg.get(str(appid),'path',fallback=None) or options.defaultpath:
                     path = pc.get(appid,options.cfg.get(str(appid),'path',
                                     fallback = options.defaultpath and os.path.join(options.defaultpath,str(appid))))
                     if os.path.exists(modpath(options.steampath,appid,wid)):
                         # download was successful
-                        log("Moving "+str(wid)+" ...",0,0)
+                        log("Moving "+str(wid)+" to "+path+" ...",0)
                         if(os.path.exists(os.path.join(path,str(wid)))):
                             # already exists -> delete old version
                             shutil.rmtree(os.path.join(path,str(wid)))
@@ -556,11 +562,18 @@ def download():
                         log(" DONE")
                     pc[appid]=path
         # reset state
-        if(len(errors)==0): # don't reset input if steamcmd crashed; todo: check individual items
-            URLinput.delete("1.0", tk.END)
+        #if(len(errors)==0): # don't reset input if steamcmd crashed; todo: check individual items
+        URLinput.delete("1.0", tk.END)
+        for wid in errors:
+            URLinput.insert(tk.END, wid+"\n")
+
+        # print stats
+        log(f"downloaded {success} out of {success+fails} requested items")
+        if len(errors) > 0:
+            log(f"failed items have been added back to the input field")
+
     except Exception as ex:
-        log(type(ex))
-        log(ex)
+        logException(ex)
     finally:
         button1.state = tk.NORMAL
         running = False

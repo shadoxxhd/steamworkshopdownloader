@@ -168,6 +168,8 @@ class Options:
 ## UI
 def log(data, newline = True, update = True):
     global output
+    global logfile
+
     if not output:
         return
     output.config(state='normal')
@@ -176,6 +178,7 @@ def log(data, newline = True, update = True):
     if(update):
         output.see(tk.END)
         output.update()
+    logfile.write(str(data)+("\n" if newline else ""))
 
 def logException(ex, newline = True, update = True):
     log(f"{type(ex)}: {ex} (line {ex.__traceback__.tb_lineno})", newline, update)
@@ -382,6 +385,8 @@ def download():
     global button1
     global output
     global SGinput
+
+    global logfile
     debug = False
     
     if running:
@@ -469,11 +474,12 @@ def download():
                         reason = re.search("\\(([^\\)]+)\\)", line)[1]
                         status[wid] = 3 # error
                         errors[wid] = reason
-                        log(f"Error downloading {data[wid][2]} ({reason}).")
+                        log(f"Error downloading {data[wid][1]} ({reason}).")
                         if(options.steamdb and anonymous and options.anon_ids):
                             if(int(appid) not in options.anon_ids):
                                 log(f"The corresponding game isn't known to allow anonymous downloads. You might need to use an account that owns that game.")
                         fails += 1
+                    logfile.write("> "+line+"\n")
                 except Exception as ex:
                     # expected EOF error
                     pass
@@ -523,11 +529,16 @@ def main():
     global URLinput
     global output
     global SGinput
+
+    global logfile
+
     global running
     global restart
     restart = False
     running = False
     
+    logfile = open("downloader.log", "w")
+
     cfg = configparser.ConfigParser(interpolation=None)
     cfg.read('downloader.ini')
 

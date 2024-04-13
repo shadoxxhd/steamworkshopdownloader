@@ -390,6 +390,7 @@ def download():
     global button1
     global output
     global SGinput
+    debug = False
     
     if running:
         return
@@ -430,6 +431,9 @@ def download():
             sgcode = SGinput.get()
 
         errors = {}
+        status = {}
+        fails = 0
+        success = 0
         
         for i in range(math.ceil(l/lim)):
         #for appid in download:
@@ -447,53 +451,95 @@ def download():
             for appid, wid, name, size in batch:
                 args.append(f'+workshop_download_item {appid} {int(wid)}')
             args.append("+quit")
-            
+
+            if debug:
+                print(args)
+
+            ## start of process handling -----------------
+            # local winpty
+            # args = ["winpty/winpty.exe", "-Xallow-non-tty", "-Xplain"] + args
+
             # call steamcmd
-            if options.showConsole:
-                process = subprocess.Popen(args, stdout=None, creationflags=subprocess.CREATE_NEW_CONSOLE)
-            else:
-                process = subprocess.Popen(args, stdout=subprocess.PIPE, errors='ignore', creationflags=subprocess.CREATE_NO_WINDOW)
-            q = Queue()
-            t = Thread(target=enqueue_output, args=(process.stdout, q))
-            t.daemon = True
-            t.start()
+            #if options.showConsole:
+            #    process = subprocess.Popen(args, stdout=None, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            #else:
+            #    process = subprocess.Popen(args, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=0, errors='ignore', creationflags=subprocess.CREATE_NO_WINDOW)
+
+            process = PTY(500,25)
+            process.spawn(" ".join(args))
+            
+            #q = Queue()
+            #t = Thread(target=enqueue_output, args=(process.stdout, q))
+            #t.daemon = True
+            #t.start()
+
+            ## end of process handling --------------------
+
             # show output
-            while True:
-                if options.showConsole:
-                    time.sleep(1)
-                    if process.poll() is not None:
-                        break
-                    continue
-                #out = process.stdout.readline()
+            #while True:
+            #    if options.showConsole:
+            #        time.sleep(1)
+            #        if process.poll() is not None:
+            #            break
+            #        continue
+            #    #out = process.stdout.readline()
+            #    try:
+            #        out = q.get_nowait()
+            #    except Empty:
+            #        output.update()
+            #        time.sleep(0.1)
+            #        continue
+            #    if m := re.search("Redirecting stderr to",out):
+            #        log(out[:m.span()[0]],1,0)
+            #        break
+            #    if re.match("-- type 'quit' to exit --",out):
+            #        continue
+            #    log(out, 0)
+            #    return_code = process.poll()
+            #    if return_code is not None:
+            #        #for out in process.stdout.readlines():
+            #        while not q.empty():
+            #            out = q.get_nowait()
+            #            print(out)
+            #            log(out,0)
+            #        log("",0)
+            #        if return_code == 0:
+            #            # todo: check for individual status
+            #            pass
+            #        else:
+            #            # todo: skip finished downloads
+            #            for wid,_,_,_ in batch:
+            #                errors[wid]=1
+            #        break
+            
+            while(not process.iseof()):
                 try:
-                    out = q.get_nowait()
-                except Empty:
-                    output.update()
-                    time.sleep(0.1)
-                    continue
-                if m := re.search("Redirecting stderr to",out):
-                    log(out[:m.span()[0]],1,0)
-                    break
-                if re.match("-- type 'quit' to exit --",out):
-                    continue
-                log(out, 0)
-                return_code = process.poll()
-                if return_code is not None:
-                    #for out in process.stdout.readlines():
-                    while not q.empty():
-                        out = q.get_nowait()
-                        print(out)
-                        log(out,0)
-                    log("",0)
-                    if return_code == 0:
-                        # todo: check for individual status
-                        pass
-                    else:
-                        # todo: skip finished downloads
-                        for wid,_,_,_ in batch:
-                            errors[wid]=1
-                    break
-                
+                    line = process.read().strip()
+                    if line=="":
+                        continue
+                    if line[:8] == "Download":
+                        wid = re.match("(?>[^\\d]*)(\\d+)", line)[1]
+                        log(f"Downloading {data[wid][1]} ...")
+                        status[wid] = 1
+                    if line[:8] == "Success.":
+                        wid = re.match("(?>[^\\d]*)(\\d+)", line)[1]
+                        status[wid] = 2 # success
+                        log(f"{data[wid][1]} successfully downloaded ({bytesAsSize(data[wid][2])})")
+                        success += 1
+                    if line[:5] == "ERROR":
+                        wid = re.match("(?>[^\\d]*)(\\d+)", line)[1]
+                        reason = re.search("\\(([^\\)]+)\\)", line)[1]
+                        status[wid] = 3 # error
+                        errors[wid] = reason
+                        log(f"Error downloading {data[wid][2]} ({reason}).")
+                        if(options.steamdb and anonymous and options.anon_ids):
+                            if(int(appid) not in options.anon_ids):
+                                log(f"The corresponding game isn't known to allow anonymous downloads. You might need to use an account that owns that game.")
+                        fails += 1
+                except Exception as ex:
+                    # expected EOF error
+                    pass
+
             # move mods
             pc = {} # path cache
             for appid, wid, name, size in batch:

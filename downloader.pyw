@@ -1,9 +1,11 @@
 import subprocess
+from winpty import PTY # real time communication
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 import re
 import requests
+import concurrent.futures
 import configparser
 import os
 import shutil
@@ -175,6 +177,9 @@ def log(data, newline = True, update = True):
         output.see(tk.END)
         output.update()
 
+def logException(ex, newline = True, update = True):
+    log(f"{type(ex)}: {ex} (line {ex.__traceback__.tb_lineno})", newline, update)
+
 # validator for input fields
 def validate(val, conv):
     try:
@@ -291,10 +296,40 @@ def optionsDialog(options):
 
 ## download functionality
 
+# asynchronous requests
+
+def getDetails(wid):
+    try:
+        y = requests.get(baseurl+wid)
+        size = sizeAsBytes(re.findall(r'detailsStatRight">([\d\. KMGTB]+)', y.text)[0])
+        name = unquote(re.findall(r'workshopItemTitle">([^<]*)<', y.text)[0])
+        return wid, size, name
+    except:
+        return wid, 0, None
+
+
+def getWidData(wids):
+    results = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = (executor.submit(getDetails, wid) for wid in wids)
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                wid, size, name = future.result()
+                if(name is not None):
+                    results[wid] = (size, name)
+                    log(f"{name}: {bytesAsSize(size)}")
+                else:
+                    results[wid] = (-1, str(wid)) # placeholder values
+            except Exception as exc:
+                log(f"{type(exc)} - {exc}")
+    return results
+
+
 # faster download when mixing games
 def getWids(text):
     global options
     download = []
+    appids = set()
     totalsize = 0
     for line in text.splitlines():
         if len(line)>0:
@@ -311,19 +346,28 @@ def getWids(text):
                 if re.search("SubscribeCollectionItem",x.text):
                     # collection
                     dls = re.findall(r"SubscribeCollectionItem[\( ']+(\d+)[ ',]+(\d+)'",x.text)
-                    for wid, appid in dls:
-                        size = -1
-                        name = str(wid)
+                    try:
                         if options.getDetails:
-                            try:
-                                y = requests.get(baseurl+wid)
-                                size = sizeAsBytes(re.findall(r'detailsStatRight">([\d\. KMGTB]+)', y.text)[0])
-                                name = unquote(re.findall(r'workshopItemTitle">([^<]*)<', y.text)[0])
-                                log(f"{name}: {bytesAsSize(size)}")
+                            details = getWidData([dl[0] for dl in dls])
+                        for wid, appid in dls:
+                            size = -1
+                            name = str(wid)
+                            if options.getDetails:
+                                size, name = details[wid]
                                 totalsize += size
-                            except:
-                                log("Couldn't get size for workshop item "+wid)
-                        download.append((appid,wid,name,size))
+                                #try:
+                                #    y = requests.get(baseurl+wid)
+                                #    size = sizeAsBytes(re.findall(r'detailsStatRight">([\d\. KMGTB]+)', y.text)[0])
+                                #    name = unquote(re.findall(r'workshopItemTitle">([^<]*)<', y.text)[0])
+                                #    log(f"{name}: {bytesAsSize(size)}")
+                                #    totalsize += size
+                                #except:
+                                #    log("Couldn't get size for workshop item "+wid)
+                            download.append((appid,wid,name,size)) # appid, wid, name, size
+                            appids.add(int(appid))
+                        print("download list populated")
+                    except Exception as ex:
+                        logException(ex)
                 elif re.search("ShowAddToCollection",x.text):
                     # single item
                     wid, appid = re.findall(r"ShowAddToCollection[\( ']+(\d+)[ ',]+(\d+)'",x.text)[0]
@@ -332,10 +376,11 @@ def getWids(text):
                     if options.getDetails:
                         log(f"{name}: {bytesAsSize(size)}")
                     download.append((appid,wid,name,size))
+                    appids.add(int(appid))
                     totalsize += size
                 else:
                     log('"'+line+'" doesn\'t look like a valid workshop item...\n')
-    return (download, totalsize)
+    return (download, totalsize, appids)
 
 def download():
     # don't start multiple steamcmd instances
@@ -360,7 +405,12 @@ def download():
             ZipFile(BytesIO(resp.content)).extractall(options.steampath)
             log(" DONE")
         # get array of IDs
-        download, totalsize = getWids(URLinput.get("1.0",tk.END))
+        download, totalsize, appids = getWids(URLinput.get("1.0",tk.END))
+
+        # build dict to reference later
+        data = {}
+        for appid, wid, name, size in download:
+            data[wid] = (appid, name, size)
         l = len(download)
         lim = options.batchsize
 

@@ -375,6 +375,8 @@ def getWids(text):
                     totalsize += size
                 else:
                     log('"'+line+'" doesn\'t look like a valid workshop item...\n')
+                if(options.getDetails):
+                    log(f"total download size: {bytesAsSize(totalsize)}")
     return (download, totalsize, appids)
 
 def download():

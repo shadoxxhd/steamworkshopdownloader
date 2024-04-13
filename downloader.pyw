@@ -411,6 +411,17 @@ def download():
         data = {}
         for appid, wid, name, size in download:
             data[wid] = (appid, name, size)
+
+        anonymous = options.login is None or options.login == "" or options.passw is None or options.passw == ""
+        if(options.steamdb and anonymous and options.anon_ids):
+            flag = 0
+            for appid in appids:
+                if appid not in options.anon_ids:
+                    log(f"{appid} is not known to support anonymous downloads. ")
+                    flag = 1
+            if flag:
+                log("You might need to log into a steam account that owns the games in question to successfully download workshop items.")
+
         l = len(download)
         lim = options.batchsize
 
@@ -426,7 +437,8 @@ def download():
             
             # assemble command line
             args = [os.path.join(options.steampath,'steamcmd.exe')]
-            if options.login is not None and options.passw is not None:
+            #if options.login is not None and options.login != "" and options.passw is not None:
+            if not anonymous:
                 args.append('+login '+options.login+' '+options.passw+(' '+sgcode if options.steamguard and len(sgcode)>0 else ''))
             #elif options.login is not None:
             #    args.append('+login '+options.login)

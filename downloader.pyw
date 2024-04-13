@@ -14,6 +14,10 @@ from io import BytesIO
 from urllib.parse import unquote
 from functools import partial
 
+# for async IO
+from threading import Thread
+from queue import Queue, Empty
+
 baseurl = "https://steamcommunity.com/sharedfiles/filedetails/?id="
 
 
@@ -40,6 +44,17 @@ def bytesAsSize(num):
     return str(num)+suffix
 
 
+# threading
+def enqueue_output(out, queue):
+    for line in iter(out.readline, b''):
+        queue.put(line)
+        out.close()
+ 
+def enqueue_output2(out, queue): # todo
+    buffer = ""
+    time = time.time()
+    while True:
+        pass
 
 ## options, stateful behavior
 def update_steamdb(old_ids, show_warnings = False):
@@ -78,6 +93,7 @@ class Options:
     steamdb: bool = True
     steamdb_date: int = 0
     anon_ids: list = []
+
     # other stuff
     cfg: configparser.ConfigParser = None
     volatile: bool = False # not an option, but a flag indicating if UI needs to be rebuilt
@@ -341,7 +357,7 @@ def download():
             
             # get it from steam servers
             resp = requests.get("https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip")
-            ZipFile(BytesIO(resp.content)).extractall(steampath)
+            ZipFile(BytesIO(resp.content)).extractall(options.steampath)
             log(" DONE")
         # get array of IDs
         download, totalsize = getWids(URLinput.get("1.0",tk.END))
@@ -362,8 +378,8 @@ def download():
             args = [os.path.join(options.steampath,'steamcmd.exe')]
             if options.login is not None and options.passw is not None:
                 args.append('+login '+options.login+' '+options.passw+(' '+sgcode if options.steamguard and len(sgcode)>0 else ''))
-            elif options.login is not None:
-                args.append('+login '+options.login)
+            #elif options.login is not None:
+            #    args.append('+login '+options.login)
             else:
                 args.append('+login anonymous')
             for appid, wid, name, size in batch:
@@ -375,7 +391,10 @@ def download():
                 process = subprocess.Popen(args, stdout=None, creationflags=subprocess.CREATE_NEW_CONSOLE)
             else:
                 process = subprocess.Popen(args, stdout=subprocess.PIPE, errors='ignore', creationflags=subprocess.CREATE_NO_WINDOW)
-        
+            q = Queue()
+            t = Thread(target=enqueue_output, args=(process.stdout, q))
+            t.daemon = True
+            t.start()
             # show output
             while True:
                 if options.showConsole:
@@ -383,7 +402,13 @@ def download():
                     if process.poll() is not None:
                         break
                     continue
-                out = process.stdout.readline()
+                #out = process.stdout.readline()
+                try:
+                    out = q.get_nowait()
+                except Empty:
+                    output.update()
+                    time.sleep(0.1)
+                    continue
                 if m := re.search("Redirecting stderr to",out):
                     log(out[:m.span()[0]],1,0)
                     break
@@ -392,8 +417,11 @@ def download():
                 log(out, 0)
                 return_code = process.poll()
                 if return_code is not None:
-                    for out in process.stdout.readlines():
-                        log(out,0,0)
+                    #for out in process.stdout.readlines():
+                    while not q.empty():
+                        out = q.get_nowait()
+                        print(out)
+                        log(out,0)
                     log("",0)
                     if return_code == 0:
                         # todo: check for individual status

@@ -60,7 +60,7 @@ def enqueue_output2(out, queue): # todo
 
 ## options, stateful behavior
 def update_steamdb(old_ids, show_warnings = False):
-    # unimplemented, TODO
+    # currently indirection over gist, to prevent captcha issues
     #page = requests.get("https://steamdb.info/sub/17906/apps/")
     #matches = re.findall('href="(\d+)',page.text)
     try:
@@ -355,14 +355,6 @@ def getWids(text):
                             if options.getDetails:
                                 size, name = details[wid]
                                 totalsize += size
-                                #try:
-                                #    y = requests.get(baseurl+wid)
-                                #    size = sizeAsBytes(re.findall(r'detailsStatRight">([\d\. KMGTB]+)', y.text)[0])
-                                #    name = unquote(re.findall(r'workshopItemTitle">([^<]*)<', y.text)[0])
-                                #    log(f"{name}: {bytesAsSize(size)}")
-                                #    totalsize += size
-                                #except:
-                                #    log("Couldn't get size for workshop item "+wid)
                             download.append((appid,wid,name,size)) # appid, wid, name, size
                             appids.add(int(appid))
                         print("download list populated")
@@ -454,63 +446,9 @@ def download():
 
             if debug:
                 print(args)
-
-            ## start of process handling -----------------
-            # local winpty
-            # args = ["winpty/winpty.exe", "-Xallow-non-tty", "-Xplain"] + args
-
-            # call steamcmd
-            #if options.showConsole:
-            #    process = subprocess.Popen(args, stdout=None, creationflags=subprocess.CREATE_NEW_CONSOLE)
-            #else:
-            #    process = subprocess.Popen(args, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=0, errors='ignore', creationflags=subprocess.CREATE_NO_WINDOW)
-
+            
             process = PTY(500,25)
             process.spawn(" ".join(args))
-            
-            #q = Queue()
-            #t = Thread(target=enqueue_output, args=(process.stdout, q))
-            #t.daemon = True
-            #t.start()
-
-            ## end of process handling --------------------
-
-            # show output
-            #while True:
-            #    if options.showConsole:
-            #        time.sleep(1)
-            #        if process.poll() is not None:
-            #            break
-            #        continue
-            #    #out = process.stdout.readline()
-            #    try:
-            #        out = q.get_nowait()
-            #    except Empty:
-            #        output.update()
-            #        time.sleep(0.1)
-            #        continue
-            #    if m := re.search("Redirecting stderr to",out):
-            #        log(out[:m.span()[0]],1,0)
-            #        break
-            #    if re.match("-- type 'quit' to exit --",out):
-            #        continue
-            #    log(out, 0)
-            #    return_code = process.poll()
-            #    if return_code is not None:
-            #        #for out in process.stdout.readlines():
-            #        while not q.empty():
-            #            out = q.get_nowait()
-            #            print(out)
-            #            log(out,0)
-            #        log("",0)
-            #        if return_code == 0:
-            #            # todo: check for individual status
-            #            pass
-            #        else:
-            #            # todo: skip finished downloads
-            #            for wid,_,_,_ in batch:
-            #                errors[wid]=1
-            #        break
             
             while(not process.iseof()):
                 try:
@@ -561,8 +499,7 @@ def download():
                         shutil.move(modpath(options.steampath,appid,wid),os.path.join(path,str(wid)))
                         log(" DONE")
                     pc[appid]=path
-        # reset state
-        #if(len(errors)==0): # don't reset input if steamcmd crashed; todo: check individual items
+        # reset input, then add back errored items to try again
         URLinput.delete("1.0", tk.END)
         for wid in errors:
             URLinput.insert(tk.END, wid+"\n")
@@ -593,38 +530,6 @@ def main():
     
     cfg = configparser.ConfigParser(interpolation=None)
     cfg.read('downloader.ini')
-    # validate ini
-    #if 'general' not in cfg:
-    #    cfg['general']={'theme': 'default', 'steampath': 'steamcmd', 'batchsize': '50', 'showConsole': 'no', 'defaultpath': 'mods', 'steamguard': 'yes'}
-    #else:
-    #    if 'theme' not in cfg['general']:
-    #        cfg['general']['theme'] = 'default'
-    #    if 'steampath' not in cfg['general']:
-    #        cfg['general']['steampath'] = 'steamcmd'
-    #    if 'lim' not in cfg['general']:
-    #        cfg['general']['batchsize'] = '50'
-    #    if 'showConsole' not in cfg['general']:
-    #        cfg['general']['showConsole'] = 'no'
-    
-    # set globals
-    #steampath = cfg['general']['steampath']
-    #defaultpath = cfg.get('general','defaultpath',fallback=None)
-    #theme = cfg['general']['theme']
-    #lim = cfg.getint('general','batchsize')
-    #login = None
-    #passw = None
-    #steamguard = None
-    #if 'login' in cfg['general']:
-    #    login = cfg['general']['login']
-    #    if 'passw' in cfg['general']:
-    #        passw = cfg['general']['passw']
-    #    if 'steamguard' in cfg['general']:
-    #        steamguard = cfg.getboolean('general','steamguard')
-    #    else:
-    #        cfg['general']['steamguard'] = "no"
-    #        steamguard = False
-
-    #showConsole = cfg.getboolean('general','showConsole')
 
     options = Options(cfg)
 
@@ -707,7 +612,7 @@ def main():
         if not restart:
             break
     
-    if not os.path.exists('downloader.ini'): # remove this when in-app options menu exists
+    if not os.path.exists('downloader.ini'):
         options.write()
 
 if __name__ == '__main__':

@@ -10,7 +10,7 @@ ___
 
 Download and run "downloader.exe". Enter one or more workshop URLs, then press "Download".
 
-The files will be downloaded to the `steamcmd/steamapps/workshop/content/<appID>/<workshop ID>` folder (relative to the executable) by default.
+The files will be moved to the `mods/<appID>/<workshop ID>` folder (relative to the executable) by default.
 
 Collections are also supported now.
 

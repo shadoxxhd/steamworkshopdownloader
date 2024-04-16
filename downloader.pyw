@@ -129,6 +129,8 @@ class Options:
                 self.steamdb = cfg.getboolean('general', 'steamdb')
             if 'steamdb_date' in general:
                 self.steamdb_date = cfg.getint('general', 'steamdb_date')
+        else:
+            cfg.add_section('general')
 
 
     def postinit(self):
@@ -160,7 +162,7 @@ class Options:
             global output
             global root
             restart = (URLinput.get("1.0", tk.END), output.get("1.0", tk.END))
-            print(restart)
+            #print(restart)
             root.destroy()
             return True
         return False
@@ -170,6 +172,9 @@ def log(data, newline = True, update = True):
     global output
     global logfile
 
+    if logfile:
+        logfile.write(str(data)+("\n" if newline else ""))
+
     if not output:
         return
     output.config(state='normal')
@@ -178,7 +183,6 @@ def log(data, newline = True, update = True):
     if(update):
         output.see(tk.END)
         output.update()
-    logfile.write(str(data)+("\n" if newline else ""))
 
 def logException(ex, newline = True, update = True):
     log(f"{type(ex)}: {ex} (line {ex.__traceback__.tb_lineno})", newline, update)
@@ -360,7 +364,7 @@ def getWids(text):
                                 totalsize += size
                             download.append((appid,wid,name,size)) # appid, wid, name, size
                             appids.add(int(appid))
-                        print("download list populated")
+                        #print("download list populated")
                     except Exception as ex:
                         logException(ex)
                 elif re.search("ShowAddToCollection",x.text):
@@ -576,7 +580,7 @@ def main():
             bg2=None
             textcol=None
         else:
-            print("invalid theme specified")
+            log("invalid theme specified")
             bg1=None
             bg2=None
             textcol=None

@@ -85,8 +85,8 @@ class Options:
     defaultpath: str = "mods"
     batchsize: int = 50
     # login
-    login: str = None
-    passw: str = None
+    login: str = ""
+    passw: str = ""
     steamguard: bool = True
     # behavior
     getDetails: bool = True

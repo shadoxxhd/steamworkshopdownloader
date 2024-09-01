@@ -508,7 +508,10 @@ def download():
                         status[wid] = 2 # success
                         totalBytes += bts
                         #log(f"{data[wid][1]} successfully downloaded ({bytesAsSize(bts)})") # data[wid][2]
-                        log(f" done ({bytesAsSize(bts)}) [{totalBytes/totalsize*100:2.1f}%]")
+                        if options.getDetails:
+                            log(f" done ({bytesAsSize(bts)}) [{totalBytes/totalsize*100:2.1f}%]")
+                        else:
+                            log(f" done")
                         success += 1
                         downloading -= 1
                     if (result := re.search(r'ERROR! Download item (\d+) failed \(([^\)]+)\)', line)):
@@ -580,7 +583,7 @@ def download():
             URLinput.insert(tk.END, str(wid)+"\n")
 
         # print stats
-        log(f"\ndownloaded {success} out of {success+fails} requested items ({bytesAsSize(totalBytes)}) ") #{totalBytes/totalsize*100:2.1f}% filesize
+        log(f"\ndownloaded {success} out of {success+fails} requested items" + (f" ({bytesAsSize(totalBytes)})" if totalBytes else "")) #{totalBytes/totalsize*100:2.1f}% filesize
         if len(errors) > 0:
             log(f"failed items have been added back to the input field")
 
@@ -606,7 +609,7 @@ def main():
     restart = False
     running = False
     
-    logfile = open("downloader.log", "w", buffering=1)
+    logfile = open("downloader.log", "w", buffering=1, errors="replace")
 
     cfg = configparser.ConfigParser(interpolation=None)
     cfg.read('downloader.ini')

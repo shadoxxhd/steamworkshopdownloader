@@ -1,5 +1,5 @@
 import subprocess
-from winpty import PTY, PtyProcess # PTY, WinptyError # real time communication
+from winpty import PTY, PtyProcess, WinptyError # PTY, WinptyError # real time communication
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
@@ -84,7 +84,7 @@ class Options:
     theme: str = "default"
     steampath: str = "steamcmd"
     defaultpath: str = "mods"
-    batchsize: int = 50
+    batchsize: int = 500
     # login
     login: str = ""
     passw: str = ""
@@ -373,7 +373,7 @@ def getWids(text):
                             if options.getDetails:
                                 size, name = details[wid]
                                 totalsize += size
-                            download.append((appid,wid,name,size)) # appid, wid, name, size
+                            download.append((int(appid),int(wid),name,size)) # appid, wid, name, size
                             appids.add(int(appid))
                         #print("download list populated")
                     except Exception as ex:
@@ -385,13 +385,13 @@ def getWids(text):
                     name = unquote(re.findall(r'workshopItemTitle">([^<]*)<', x.text)[0])
                     if options.getDetails:
                         log(f"{name}: {bytesAsSize(size)}")
-                    download.append((appid,wid,name,size))
+                    download.append((int(appid),int(wid),name,size))
                     appids.add(int(appid))
                     totalsize += size
                 else:
                     log('"'+line+'" doesn\'t look like a valid workshop item...\n')
-                if(options.getDetails):
-                    log(f"total download size: {bytesAsSize(totalsize)}")
+    if(options.getDetails and len(download)>1):
+        log(f"total download size: {bytesAsSize(totalsize)}")
     return (download, totalsize, appids)
 
 def download():
@@ -450,11 +450,11 @@ def download():
         success = 0
         totalBytes = 0
 
-        # prepare regex
-        stripANSI = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]*)') # removes ansi escape sequences
-        findDownloading = re.compile(r'Downloading item (\d+) ')
-        findSuccess = re.compile(r'Success\. Downloaded item (\d+) to "[^"]+" \((\d+) bytes\)')
-        findFailure = re.compile(r'')
+        # prepare regex (apparently re caches regex automatically -> unnecessary)
+        #stripANSI = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]*)') # removes ansi escape sequences
+        #findDownloading = re.compile(r'Downloading item (\d+) ')
+        #findSuccess = re.compile(r'Success\. Downloaded item (\d+) to "[^"]+" \((\d+) bytes\)')
+        #findFailure = re.compile(r'')
         
         for i in range(math.ceil(l/lim)):
         #for appid in download:
@@ -470,7 +470,7 @@ def download():
             else:
                 args.append('+login anonymous')
             for appid, wid, name, size in batch:
-                args.append(f'+workshop_download_item {appid} {int(wid)}')
+                args.append(f'+workshop_download_item {appid} {wid}')
             args.append("+quit")
 
             if debug:
@@ -485,10 +485,8 @@ def download():
             #t = threading.Thread(target=killThread,args=[process])
             #t.start()
 
-            previous = fails + success
-            j=0
             downloading = 0
-            while(process.isalive() or (j:=j+1)>3):
+            while(process.isalive()):
                 try:
                     #line = process.readline()
                     line = process.read(length=10000,blocking=False) # may fix last/single item not being registered
@@ -496,44 +494,34 @@ def download():
                         print(f"[{repr(line)}]")
                     #line = stripANSI.sub("",line.strip())
                     if line=="":
+                        log("", False) # prevents window from hanging
                         continue
-                    #if line[:8] == "Download":
-                    matches = 0
-                    result = re.search(r'Downloading item (\d+) ', line)
-                    if result:
-                        wid = result[1] #re.match("(?>[^\\d]*)(\\d+)", line)[1]
-                        log(f"Downloading {data[wid][1]} ... ", False)
+                    if (result := re.search(r'Downloading item (\d+) ', line)):
+                        wid = int(result[1]) #re.match("(?>[^\\d]*)(\\d+)", line)[1]
+                        log(f"Downloading {data[wid][1]} ..", False)
                         status[wid] = 1
-                        matches += 1
                         downloading += 1
-                    result = re.search(r'Success\. Downloaded item (\d+) to "([^"]+)" \((\d+) bytes\)', line)
-                    if result: #line[:8] == "Success.":
-                        #match = re.match('(?>[^\\d]*)(\\d+)[^\\"]+\\"[^\\"]+\\" \\((\\d+) bytes\\)', line)
-                        wid = result[1] #match[1]
+                    if (result := re.search(r'Success\. Downloaded item (\d+) to "([^"]+)" \((\d+) bytes\)', line)):
+                        wid = int(result[1]) #match[1]
                         path = result[2]
                         bts = int(result[3]) #match[2]
-                        #wid = re.match("(?>[^\\d]*)(\\d+)", line)[1]
-                        #bts = re.match("\\((\\d+) bytes\\)", line)[1]
                         status[wid] = 2 # success
                         totalBytes += bts
                         #log(f"{data[wid][1]} successfully downloaded ({bytesAsSize(bts)})") # data[wid][2]
-                        log(f" done ({bytesAsSize(bts)}) [{totalBytes/totalsize*100:2.1f}]")
+                        log(f" done ({bytesAsSize(bts)}) [{totalBytes/totalsize*100:2.1f}%]")
                         success += 1
-                        matches += 1
                         downloading -= 1
-                    result = re.search(r'ERROR! Download item (\d+) failed \(([^\)]+)\)', line)
-                    if result: #line[:5] == "ERROR":
-                        wid = result[1] #re.match("(?>[^\\d]*)(\\d+)", line)[1]
+                    if (result := re.search(r'ERROR! Download item (\d+) failed \(([^\)]+)\)', line)):
+                        wid = int(result[1]) #re.match("(?>[^\\d]*)(\\d+)", line)[1]
                         reason = result[2] #re.search("\\(([^\\)]+)\\)", line)[1]
                         status[wid] = 3 # error
                         errors[wid] = reason
                         #log(f"Error downloading {data[wid][1]} ({reason}).")
                         log(f"ERROR ({reason})")
                         if(options.steamdb and anonymous and options.anon_ids):
-                            if(int(appid) not in options.anon_ids):
+                            if(appid not in options.anon_ids):
                                 log(f"The corresponding game isn't known to allow anonymous downloads. You might need to use an account that owns that game.")
                         fails += 1
-                        matches += 1
                         downloading -= 1
                     #if matches < 1:
                     if downloading > 0:
@@ -546,40 +534,53 @@ def download():
                     pass
             del process
 
-            # END BATCH
+            # END BATCH DOWNLOAD
 
-            # move mods
-            pc = {} # path cache
-            for appid, wid, name, size in batch:
-                if wid not in status:
-                    errors[wid]="no record"
-                elif status[wid] == 1: # "still downloading" -> makes no sense
-                    pass # TODO
-                elif status[wid] != 2: # download not successful
-                    continue
-                if os.path.exists(modpath(options.steampath,appid,wid)):
-                    # download was probably successful
-                    status[wid]=2
-                    if appid in pc or options.cfg.get(str(appid),'path',fallback=None) or options.defaultpath:
-                        path = pc.get(appid,options.cfg.get(str(appid),'path',
-                                    fallback = options.defaultpath and os.path.join(options.defaultpath,str(appid))))
-                        log("Moving "+str(wid)+" to "+path+" ...",0)
-                        if(os.path.exists(os.path.join(path,str(wid)))):
-                            # already exists -> delete old version
-                            shutil.rmtree(os.path.join(path,str(wid)))
-                        shutil.move(modpath(options.steampath,appid,wid),os.path.join(path,str(wid)))
-                        log(" DONE")
-                    pc[appid]=path
-                else:
-                    status[wid]=3 # no files found -> failed
-                    errors[wid]="unknown"
+        # move mods
+        pc = {} # path cache
+        moves = {}
+
+        # initialize path cache
+        for appid in appids:
+            pc[appid]=pc.get(appid,options.cfg.get(str(appid),'path',
+                                fallback = options.defaultpath and os.path.join(options.defaultpath,str(appid))))
+            moves[appid] = 0
+
+        for appid, wid, name, size in download:
+            if wid not in status:
+                errors[wid]="no record"
+            elif status[wid] == 1: # "still downloading" -> makes no sense
+                pass # TODO
+            elif status[wid] != 2: # download not successful
+                continue
+            if os.path.exists(modpath(options.steampath,appid,wid)):
+                # download was probably successful
+                status[wid]=2
+                path = pc.get(appid,None)
+                if path:
+                    #log("Moving "+str(wid)+" to "+path+" ...",0)
+                    if(os.path.exists(os.path.join(path,str(wid)))):
+                        # already exists -> delete old version
+                        shutil.rmtree(os.path.join(path,str(wid)))
+                    shutil.move(modpath(options.steampath,appid,wid),os.path.join(path,str(wid)))
+                    #log(" DONE")
+                    moves[appid] += 1
+                pc[appid]=path
+            else:
+                status[wid]=3 # no files found -> failed
+                errors[wid]="unknown"
+        for appid in appids:
+            if moves[appid]>0:
+                log(f"Moved {moves[appid]} items to {pc[appid]}")
+        # TODO: clean internal download directory, in case of partial downloads (configurable)
+
         # reset input, then add back errored items to try again
         URLinput.delete("1.0", tk.END)
         for wid in errors:
-            URLinput.insert(tk.END, wid+"\n")
+            URLinput.insert(tk.END, str(wid)+"\n")
 
         # print stats
-        log(f"downloaded {success} out of {success+fails} requested items ({totalBytes/totalsize*100:2.1f}% filesize) ")
+        log(f"\ndownloaded {success} out of {success+fails} requested items ({bytesAsSize(totalBytes)}) ") #{totalBytes/totalsize*100:2.1f}% filesize
         if len(errors) > 0:
             log(f"failed items have been added back to the input field")
 

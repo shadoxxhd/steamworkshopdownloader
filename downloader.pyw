@@ -1,11 +1,12 @@
 import subprocess
-from winpty import PTY # real time communication
+from winpty import PTY, PtyProcess # PTY, WinptyError # real time communication
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 import re
 import requests
 import concurrent.futures
+import threading
 import configparser
 import os
 import shutil
@@ -305,6 +306,16 @@ def optionsDialog(options):
 
 # asynchronous requests
 
+def killThread(proc):
+    while(proc.isalive()):
+        print("#")
+        time.sleep(1)
+    print(" ### no longer alive ### ")
+    #time.sleep(4)
+    r=proc.close(True)
+    del proc
+    print(f"closed: {r}")
+
 def getDetails(wid):
     try:
         y = requests.get(baseurl+wid)
@@ -437,6 +448,13 @@ def download():
         status = {}
         fails = 0
         success = 0
+        totalBytes = 0
+
+        # prepare regex
+        stripANSI = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]*)') # removes ansi escape sequences
+        findDownloading = re.compile(r'Downloading item (\d+) ')
+        findSuccess = re.compile(r'Success\. Downloaded item (\d+) to "[^"]+" \((\d+) bytes\)')
+        findFailure = re.compile(r'')
         
         for i in range(math.ceil(l/lim)):
         #for appid in download:
@@ -458,37 +476,77 @@ def download():
             if debug:
                 print(args)
             
-            process = PTY(500,25)
+            #process = PtyProcess.spawn(args,dimensions=(1000,1000))
+            process = PTY(1000,10)
             process.spawn(" ".join(args))
-            
-            while(not process.iseof()):
+            log(f"Starting steamcmd ...")
+
+            # kill thread only needed for PtyProcess, and doesn't always work
+            #t = threading.Thread(target=killThread,args=[process])
+            #t.start()
+
+            previous = fails + success
+            j=0
+            downloading = 0
+            while(process.isalive() or (j:=j+1)>3):
                 try:
-                    line = process.read().strip()
+                    #line = process.readline()
+                    line = process.read(length=10000,blocking=False) # may fix last/single item not being registered
+                    if debug:
+                        print(f"[{repr(line)}]")
+                    #line = stripANSI.sub("",line.strip())
                     if line=="":
                         continue
-                    if line[:8] == "Download":
-                        wid = re.match("(?>[^\\d]*)(\\d+)", line)[1]
-                        log(f"Downloading {data[wid][1]} ...")
+                    #if line[:8] == "Download":
+                    matches = 0
+                    result = re.search(r'Downloading item (\d+) ', line)
+                    if result:
+                        wid = result[1] #re.match("(?>[^\\d]*)(\\d+)", line)[1]
+                        log(f"Downloading {data[wid][1]} ... ", False)
                         status[wid] = 1
-                    if line[:8] == "Success.":
-                        wid = re.match("(?>[^\\d]*)(\\d+)", line)[1]
+                        matches += 1
+                        downloading += 1
+                    result = re.search(r'Success\. Downloaded item (\d+) to "([^"]+)" \((\d+) bytes\)', line)
+                    if result: #line[:8] == "Success.":
+                        #match = re.match('(?>[^\\d]*)(\\d+)[^\\"]+\\"[^\\"]+\\" \\((\\d+) bytes\\)', line)
+                        wid = result[1] #match[1]
+                        path = result[2]
+                        bts = int(result[3]) #match[2]
+                        #wid = re.match("(?>[^\\d]*)(\\d+)", line)[1]
+                        #bts = re.match("\\((\\d+) bytes\\)", line)[1]
                         status[wid] = 2 # success
-                        log(f"{data[wid][1]} successfully downloaded ({bytesAsSize(data[wid][2])})")
+                        totalBytes += bts
+                        #log(f"{data[wid][1]} successfully downloaded ({bytesAsSize(bts)})") # data[wid][2]
+                        log(f" done ({bytesAsSize(bts)}) [{totalBytes/totalsize*100:2.1f}]")
                         success += 1
-                    if line[:5] == "ERROR":
-                        wid = re.match("(?>[^\\d]*)(\\d+)", line)[1]
-                        reason = re.search("\\(([^\\)]+)\\)", line)[1]
+                        matches += 1
+                        downloading -= 1
+                    result = re.search(r'ERROR! Download item (\d+) failed \(([^\)]+)\)', line)
+                    if result: #line[:5] == "ERROR":
+                        wid = result[1] #re.match("(?>[^\\d]*)(\\d+)", line)[1]
+                        reason = result[2] #re.search("\\(([^\\)]+)\\)", line)[1]
                         status[wid] = 3 # error
                         errors[wid] = reason
-                        log(f"Error downloading {data[wid][1]} ({reason}).")
+                        #log(f"Error downloading {data[wid][1]} ({reason}).")
+                        log(f"ERROR ({reason})")
                         if(options.steamdb and anonymous and options.anon_ids):
                             if(int(appid) not in options.anon_ids):
                                 log(f"The corresponding game isn't known to allow anonymous downloads. You might need to use an account that owns that game.")
                         fails += 1
+                        matches += 1
+                        downloading -= 1
+                    #if matches < 1:
+                    if downloading > 0:
+                        log(".", False) # rework this; perhaps use different threads for reading and output anyway?
                     logfile.write("> "+line+"\n")
+
                 except Exception as ex:
-                    # expected EOF error
+                    # (now un-)expected EOF error
+                    print(ex)
                     pass
+            del process
+
+            # END BATCH
 
             # move mods
             pc = {} # path cache
@@ -499,11 +557,12 @@ def download():
                     pass # TODO
                 elif status[wid] != 2: # download not successful
                     continue
-                if appid in pc or options.cfg.get(str(appid),'path',fallback=None) or options.defaultpath:
-                    path = pc.get(appid,options.cfg.get(str(appid),'path',
+                if os.path.exists(modpath(options.steampath,appid,wid)):
+                    # download was probably successful
+                    status[wid]=2
+                    if appid in pc or options.cfg.get(str(appid),'path',fallback=None) or options.defaultpath:
+                        path = pc.get(appid,options.cfg.get(str(appid),'path',
                                     fallback = options.defaultpath and os.path.join(options.defaultpath,str(appid))))
-                    if os.path.exists(modpath(options.steampath,appid,wid)):
-                        # download was successful
                         log("Moving "+str(wid)+" to "+path+" ...",0)
                         if(os.path.exists(os.path.join(path,str(wid)))):
                             # already exists -> delete old version
@@ -511,13 +570,16 @@ def download():
                         shutil.move(modpath(options.steampath,appid,wid),os.path.join(path,str(wid)))
                         log(" DONE")
                     pc[appid]=path
+                else:
+                    status[wid]=3 # no files found -> failed
+                    errors[wid]="unknown"
         # reset input, then add back errored items to try again
         URLinput.delete("1.0", tk.END)
         for wid in errors:
             URLinput.insert(tk.END, wid+"\n")
 
         # print stats
-        log(f"downloaded {success} out of {success+fails} requested items")
+        log(f"downloaded {success} out of {success+fails} requested items ({totalBytes/totalsize*100:2.1f}% filesize) ")
         if len(errors) > 0:
             log(f"failed items have been added back to the input field")
 
@@ -543,7 +605,7 @@ def main():
     restart = False
     running = False
     
-    logfile = open("downloader.log", "w")
+    logfile = open("downloader.log", "w", buffering=1)
 
     cfg = configparser.ConfigParser(interpolation=None)
     cfg.read('downloader.ini')

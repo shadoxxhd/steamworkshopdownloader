@@ -1,1 +1,1 @@
-pyinstaller --onefile downloader.pyw
+pyinstaller --onefile downloader.pyw --clean

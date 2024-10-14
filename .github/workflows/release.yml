@@ -1,0 +1,44 @@
+name: Release tagged build
+
+on:
+  push:
+    tags: [ '*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ github.ref_name }}
+      RELEASE_VERSION: ${{ github.ref_name }}
+      SNAPSHOT: ${{ endsWith(github.ref_name, '-snapshot') || contains(github.event.head_commit.message, '[snapshot]') }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Delete old release if it already exists
+        run: gh release delete --yes "${RELEASE_VERSION}"
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Release under current tag
+        run: |
+          PRERELEASE=""
+          if [[ "$SNAPSHOT" == "true" ]]; then
+            PRERELEASE="--prerelease"
+          fi
+          export "CHANGELOG_FILE=$(mktemp --suffix=.md)"
+          echo "CHANGELOG_FILE=${CHANGELOG_FILE}" >> $GITHUB_ENV
+          gh api --method POST -H "Accept: application/vnd.github+json" \
+            "/repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            -f tag_name="${RELEASE_VERSION}" \
+            --jq ".body" > "${CHANGELOG_FILE}"
+          cat "${CHANGELOG_FILE}"
+          gh release create "${RELEASE_VERSION}" -F "${CHANGELOG_FILE}" $PRERELEASE ./dist/*
+        shell: bash
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

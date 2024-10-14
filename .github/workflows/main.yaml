@@ -1,0 +1,25 @@
+name: Package Application with Pyinstaller
+
+on: [ push ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Create Executable
+      uses: sayyid5416/pyinstaller@v1
+      with:
+          python_ver: '3.12'
+          pyinstaller_ver: '==5.13.2'
+          spec: 'downloader.spec'
+          requirements: 'requirements.txt'
+          upload_exe_with_name: 'downloader.exe'
+          options: --onefile, --name "Steam Workshop Downloader", --windowed, 
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: downloader.exe
+        path: src/dist/windows

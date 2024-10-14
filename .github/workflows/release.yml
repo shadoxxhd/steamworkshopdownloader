@@ -18,6 +18,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Create Executable
+        uses: sayyid5416/pyinstaller@v1
+        with:
+            python_ver: '3.12'
+            pyinstaller_ver: '==5.13.2'
+            spec: 'downloader.spec'
+            requirements: 'requirements.txt'
+            upload_exe_with_name: 'downloader.exe'
+            options: --onefile, --name "Steam Workshop Downloader", --windowed, 
+
       - name: Delete old release if it already exists
         run: gh release delete --yes "${RELEASE_VERSION}"
         continue-on-error: true
@@ -33,7 +43,7 @@ jobs:
           export "CHANGELOG_FILE=$(mktemp --suffix=.md)"
           echo "CHANGELOG_FILE=${CHANGELOG_FILE}" >> $GITHUB_ENV
           gh api --method POST -H "Accept: application/vnd.github+json" \
-            "/repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
             -f tag_name="${RELEASE_VERSION}" \
             --jq ".body" > "${CHANGELOG_FILE}"
           cat "${CHANGELOG_FILE}"

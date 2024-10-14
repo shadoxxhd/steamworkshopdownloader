@@ -17,4 +17,3 @@ jobs:
           spec: 'downloader.spec'
           requirements: 'requirements.txt'
           upload_exe_with_name: 'downloader.exe'
-          options: --onefile, --name "Steam Workshop Downloader", --windowed, 

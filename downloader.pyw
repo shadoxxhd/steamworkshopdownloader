@@ -560,15 +560,27 @@ def download():
                 # download was probably successful
                 status[wid]=2
                 path = pc.get(appid,None)
+                targetpath = modpath(options.steampath,appid,wid)
                 if path:
                     #log("Moving "+str(wid)+" to "+path+" ...",0)
                     if(os.path.exists(os.path.join(path,str(wid)))):
                         # already exists -> delete old version
                         shutil.rmtree(os.path.join(path,str(wid)))
-                    shutil.move(modpath(options.steampath,appid,wid),os.path.join(path,str(wid)))
+                    targetpath = os.path.join(path,str(wid))
+                    shutil.move(modpath(options.steampath,appid,wid), targetpath)
                     #log(" DONE")
                     moves[appid] += 1
+
                 pc[appid]=path
+
+                script = options.cfg.get(str(appid),'script', fallback=None)
+                log(f"Found script {script}")
+                if script is not None:
+                    try:
+                        with open(script, 'rb') as scriptfile:
+                            exec(scriptfile.read(), {'PATH': targetpath, 'NAME': name})
+                    except Exception as e:
+                        log(f"Error script {e}")
             else:
                 status[wid]=3 # no files found -> failed
                 errors[wid]="unknown"

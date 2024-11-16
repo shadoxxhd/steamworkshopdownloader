@@ -44,6 +44,7 @@ If both `login` and `passw` are provided, it will try a non-anonymous login befo
 #### `[appid]` sections
 
 - `path` : Where downloaded mods for a certain game should be moved. Old versions of the mods in this location will be overwritten.
+- `script` : A path to a python script to execute after the download finished, you can use the variables PATH (path to the downloaded folder) and NAME (workshop title)
 
 #### Example of a modified `downloader.ini`
 
